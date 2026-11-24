@@ -4,7 +4,7 @@
 - IndexedDB stores the active model and photo Blobs. JSON backup/restore is explicit because browser profile data is not a durable external backup.
 - The topology uses dependency-free SVG with pan, zoom, selection and filtering. It can be replaced behind `topology.js` if a graph library becomes necessary.
 - Time state, perspective and evidence classification are separate fields. Readiness status changes do not change evidence classification.
-- Vendor integrations are deferred; future read-only observations enter through a local adapter and require architect review before confirmation.
+- Vendor observations enter through a local snapshot adapter and require explicit architect review before a sourced Observed record is appended. They do not become confirmed automatically.
 - No customer documents, photographs, configurations or credentials are stored in Git. The repository holds synthetic seed data and a defensive `.gitignore`.
 - Phase 2 uses sparse `branchAttributes` for Physical and Logical observations. A missing value remains Unknown; current observations do not overwrite inherited pattern targets.
 - Branch patterns are editable reusable intent. Three synthetic examples demonstrate different targets without asserting any final client pattern.
@@ -16,3 +16,6 @@
 - Critical mandatory failures always fail the acceptance gate, even with an approved exception. Unknown mandatory results block acceptance; noncritical approved exceptions may permit explicit conditional acceptance.
 - Synthetic LAN, Wi-Fi, SD-WAN, physical, routing and management rules demonstrate the six rule categories. Missing target or observation values remain Unknown.
 - Schema migration adds the rule catalogue and gates to an existing workspace without injecting synthetic observations, baselines or runs. New demonstration workspaces alone contain synthetic assurance examples.
+- Phase 4 keeps Dashboard credentials in macOS Keychain. An optional collector makes fixed-host read-only GET requests and uses built-in JavaScript for Automation to allowlist snapshot fields; the browser remains offline.
+- A Meraki snapshot must be mapped to a branch and staged. Per-candidate Apply or Dismiss decisions retain provenance. Applying never changes a baseline, earlier run or confirmation.
+- Schema 4 adds Meraki batch/candidate collections. Existing schema 3 workspaces migrate with empty vendor collections; only the synthetic demo starts with staged candidates.
