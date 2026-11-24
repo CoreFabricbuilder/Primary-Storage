@@ -1,22 +1,21 @@
-# Atlas Enterprise Architecture Workspace
+# Network Refresh Architecture Cockpit
 
-A small, dependency-free application for mapping enterprise capabilities, applications, data assets, technology, and their relationships.
+A zero-install, local-first browser application for architecture visibility across a network refresh programme. The repository contains synthetic demonstration data only.
 
-## Run
+## Open
 
-Requires Node.js 20 or later. From this repository:
+Download or unzip this repository, then open `index.html` in a current macOS browser. No terminal, server, package installation or build is needed. The first open creates a synthetic workspace in that browser's IndexedDB. Use the same browser profile and the same local file location to reopen it.
 
-```bash
-npm start
-```
+The application has six screens: Architecture Overview, Topology, LLD Readiness, Architecture Decisions, Dependencies and Branches. Current, Transition and Future are selectable. Design Intent, Observed, Validated and As-Built are model perspectives; evidence classification is tracked separately.
 
-Open `http://localhost:3000`. Set `PORT` to use another port. Run the model tests with `npm test`.
+## Your data
 
-## What you can do
+Changes and selected branch photographs are stored in IndexedDB in the browser profile. Use **Export JSON** regularly to download a complete backup, including photographs. **Import JSON** replaces the active workspace and photos after confirmation. Keep exported backups and customer evidence outside this Git repository. Browser private mode, profile cleanup and local file origin changes can make stored data unavailable; the JSON backup is the portable copy.
 
-- Add, edit, search, filter, and remove architecture elements.
-- Connect elements and inspect their relationships in the map.
-- Track capability coverage by active applications and identify retiring elements.
-- Import and export the whole workspace as JSON.
+Photographs may be attached to a branch or one of its devices. Supported formats are JPEG, PNG, WebP and HEIC/HEIF, up to 20 MB each. They are classified Observed and are never promoted to Confirmed automatically.
 
-The app starts with sample architecture data. Changes are stored in your browser's local storage, so each browser has its own workspace. Export JSON regularly to back up or share a model. There is no server-side database or login.
+## Development verification
+
+The application runs without developer tools. Developers with Node.js 20+ may run the dependency-free tests with `node --test tests/*.test.cjs`. Syntax checks can be run with `node --check` on each JavaScript file. There is no production build.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md), [DATA_MODEL.md](DATA_MODEL.md) and [PROJECT_STATE.md](PROJECT_STATE.md) for implementation details and scope.
