@@ -6,4 +6,4 @@ Implemented: direct-file browser shell, six architecture screens, synthetic netw
 
 Scope: architecture visibility MVP. Native packaging, vendor APIs, project management, telemetry and cloud services are outside this branch.
 
-Verification: six dependency-free model/security tests pass; all JavaScript syntax checks and `git diff --check` pass. Direct browser launch remains unverified in this Linux execution environment because Chromium stalls even on `about:blank`; macOS browser smoke testing is still needed during PR review. There is no production build by design.
+Verification: six dependency-free model/security tests pass; all JavaScript syntax checks and `git diff --check` pass. Direct browser launch remains unverified: this Linux environment's Chromium stalls even on `about:blank`, and its Playwright browser rejects direct `file://` navigation with `ERR_BLOCKED_BY_ADMINISTRATOR`. macOS browser smoke testing is still needed during PR review. There is no production build by design.
