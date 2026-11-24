@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const C = window.Cockpit;
-  const { readinessCategories, domainNames, states } = C.model;
+  const { readinessCategories, domainNames, states, expectationKeys } = C.model;
   const slug = value => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   const domains = domainNames.map(name => ({ id: `dom-${slug(name)}`, name }));
   const domainId = name => domains.find(domain => domain.name === name).id;
@@ -14,11 +14,31 @@
     { id: 'site-one-mutual-place', name: 'One Mutual Place', siteType: 'Campus' },
     { id: 'site-branch-north', name: 'Example Branch North', siteType: 'Branch' },
     { id: 'site-branch-south', name: 'Example Branch South', siteType: 'Branch' },
+    { id: 'site-branch-pending', name: 'Example Branch Pending', siteType: 'Branch' },
   ];
-  const branchPatterns = [{ id: 'pattern-dual-transport', name: 'Example dual-transport branch', description: 'Illustrative branch design with WAN edge, LAN switch and Wi-Fi access point.', wan: 'Dual transport', lan: 'Segmented access', wifi: 'Cisco Meraki example' }];
+  const expectations = values => Object.fromEntries(expectationKeys.map(key => [key, values[key] ?? null]));
+  const branchPatterns = [
+    { id: 'pattern-dual-transport', code: 'BP-SYN-01', name: 'Synthetic resilient branch', description: 'Illustrative dual-transport branch target.', intendedUse: 'Example branch requiring dual SD-WAN transport and local Wi-Fi.', expectations: expectations({ wanEdgeQuantity: '2', wanTransports: 'Internet, MPLS', lanDevices: '2', wifiApQuantity: '2', wifiSsids: 'Corporate, Guest', vlans: '110, 120', vrfs: 'Corporate', sdwanVpns: '10', routing: 'BGP', resilience: 'Dual power and transport', management: 'Out-of-band management', lanHandoff: '802.1Q trunk', power: '2', optics: '10G LR' }) },
+    { id: 'pattern-compact', code: 'BP-SYN-02', name: 'Synthetic compact branch', description: 'Illustrative small-site pattern.', intendedUse: 'Example branch with one transport and compact LAN.', expectations: expectations({ wanEdgeQuantity: '1', wanTransports: 'Internet', lanDevices: '1', wifiApQuantity: '1', wifiSsids: 'Corporate', vlans: '110', vrfs: 'Corporate', sdwanVpns: '10', routing: 'Static', resilience: 'UPS', management: 'In-band management', lanHandoff: 'Access port', power: '1', optics: '1G SX' }) },
+    { id: 'pattern-campus-edge', code: 'BP-SYN-03', name: 'Synthetic campus edge', description: 'Illustrative larger-site candidate, not a client-approved pattern.', intendedUse: 'Example site whose final target is still subject to architecture review.', expectations: expectations({ wanEdgeQuantity: '2', wanTransports: 'Internet, MPLS', lanDevices: '4', wifiApQuantity: null, routing: 'BGP', resilience: 'Dual path', management: 'Dedicated management' }) },
+  ];
   const branches = [
-    { id: 'branch-north', name: 'Example Branch North', siteId: 'site-branch-north', patternId: 'pattern-dual-transport', deviceIds: ['device-north-edge', 'device-north-switch', 'device-north-ap'] },
-    { id: 'branch-south', name: 'Example Branch South', siteId: 'site-branch-south', patternId: 'pattern-dual-transport', deviceIds: ['device-south-edge', 'device-south-switch', 'device-south-ap'] },
+    { id: 'branch-north', name: 'Example Branch North', siteId: 'site-branch-north', siteCode: 'SYN-N01', locationDescription: 'Illustrative northern branch location', patternId: 'pattern-dual-transport', deviceIds: ['device-north-edge', 'device-north-switch', 'device-north-ap'], currentStateConfidence: 'Medium', deploymentReadiness: 'Pending Evidence', validationStatus: 'Pending Architect Review', lastUpdated: '2026-11-24T00:00:00Z' },
+    { id: 'branch-south', name: 'Example Branch South', siteId: 'site-branch-south', siteCode: 'SYN-S02', locationDescription: 'Illustrative southern branch location', patternId: 'pattern-compact', deviceIds: ['device-south-edge', 'device-south-switch', 'device-south-ap'], currentStateConfidence: 'Low', deploymentReadiness: 'Unknown', validationStatus: 'Unknown', lastUpdated: '2026-11-24T00:00:00Z' },
+    { id: 'branch-pending', name: 'Example Branch Pending', siteId: 'site-branch-pending', siteCode: 'SYN-P03', locationDescription: '', patternId: 'pattern-campus-edge', deviceIds: [], currentStateConfidence: 'Unknown', deploymentReadiness: 'Unknown', validationStatus: 'Unknown', lastUpdated: '' },
+  ];
+  const branchAttributes = [
+    ['branch-north', 'Physical', 'wanEdge', '1', 'Observed'], ['branch-north', 'Physical', 'lanSwitches', '1', 'Observed'],
+    ['branch-north', 'Physical', 'merakiAps', '1', 'Observed'], ['branch-north', 'Physical', 'powerFeeds', '1', 'Observed'],
+    ['branch-north', 'Logical', 'wanTransports', 'Internet', 'Inferred'], ['branch-north', 'Logical', 'vlans', '110', 'Observed'],
+    ['branch-north', 'Logical', 'lanSubnets', '10.101.0.0/24', 'Inferred'], ['branch-north', 'Logical', 'routing', 'Static', 'Inferred'],
+    ['branch-north', 'Logical', 'wanCircuits', 'Example carrier A', 'Observed'],
+    ['branch-south', 'Physical', 'wanEdge', '1', 'Observed'], ['branch-south', 'Physical', 'merakiAps', '1', 'Observed'],
+    ['branch-south', 'Logical', 'wanTransports', 'Internet', 'Observed'],
+  ].map(([branchId, category, key, value, classification], index) => ({ id: `ba-syn-${index}`, branchId, category, key, value, classification, source: 'Synthetic workshop example', note: 'Illustrative only; requires real evidence.', updatedAt: '2026-11-24T00:00:00Z' }));
+  const branchEvidence = [
+    { id: 'be-syn-workshop', branchId: 'branch-north', type: 'Workshop note', objectKind: 'Branch', objectId: 'branch-north', photoId: null, source: 'Synthetic workshop example', date: '2026-11-24', classification: 'Observed', confidence: 'Medium', notes: 'Illustrative note; no customer material.' },
+    { id: 'be-syn-observation', branchId: 'branch-south', type: 'Manual observation', objectKind: 'Switch', objectId: 'device-south-switch', photoId: null, source: 'Synthetic manual observation', date: '2026-11-24', classification: 'Observed', confidence: 'Low', notes: 'Illustrative only.' },
   ];
   const devices = [
     { id: 'device-teraco-core', name: 'DEMO-TER-CORE-01', siteId: 'site-teraco', branchId: null, role: 'Core routing', vendor: 'Cisco' },
@@ -119,8 +139,8 @@
   const validationRules = [{ id: 'rule-source-required', name: 'Architectural facts require a source', description: 'A non-Unknown fact should identify provenance.' }];
   const validationResults = [{ id: 'result-teraco-source', ruleId: 'rule-source-required', factId: 'fact-teraco-path', outcome: 'Pass', note: 'Synthetic source is identified.' }];
   const workspace = {
-    schemaVersion: 1, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
-    domains, sites, branchPatterns, branches, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
+    schemaVersion: 2, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
   };
   C.demo = Object.freeze({ create: () => C.model.validateWorkspace(C.model.copy(workspace)) });

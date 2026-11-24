@@ -51,7 +51,11 @@
   async function getWorkspace() {
     const db = await open();
     const value = await readRequest(db.transaction('workspaces').objectStore('workspaces').get('active'));
-    return value ? C.model.validateWorkspace(value) : null;
+    if (!value) return null;
+    if (value.schemaVersion === 2) return C.model.validateWorkspace(value);
+    const workspace = C.model.migrateWorkspace(value, await getPhotos());
+    await saveWorkspace(workspace);
+    return workspace;
   }
   async function saveWorkspace(workspace) {
     C.model.validateWorkspace(workspace);
@@ -73,6 +77,19 @@
     if (!C.model.classifications.includes(photo.classification)) throw new Error('Invalid photo classification.');
     return photo;
   }
+  function validatePhotoLinks(workspace, photos) {
+    const ids = new Set();
+    for (const photo of photos) {
+      validatePhoto(photo, workspace);
+      if (ids.has(photo.id)) throw new Error('Duplicate photograph ID.');
+      ids.add(photo.id);
+      const matches = workspace.branchEvidence.filter(item => item.type === 'Photograph' && item.photoId === photo.id && item.branchId === photo.branchId);
+      if (matches.length !== 1) throw new Error('Photograph requires one matching branch evidence record.');
+    }
+    for (const evidence of workspace.branchEvidence.filter(item => item.type === 'Photograph')) {
+      if (!ids.has(evidence.photoId)) throw new Error('Photograph evidence is missing its local image.');
+    }
+  }
   async function addPhoto(photo, workspace) {
     validatePhoto(photo, workspace);
     await write(['photos'], tx => tx.objectStore('photos').put(photo));
@@ -82,6 +99,24 @@
     await write(['photos'], tx => photos.forEach(photo => tx.objectStore('photos').put(photo)));
   }
   async function removePhoto(id) { await write(['photos'], tx => tx.objectStore('photos').delete(id)); }
+  async function saveEvidenceWithPhotos(workspace, addedPhotos) {
+    C.model.validateWorkspace(workspace);
+    addedPhotos.forEach(photo => {
+      validatePhoto(photo, workspace);
+      if (!workspace.branchEvidence.some(item => item.photoId === photo.id && item.type === 'Photograph' && item.branchId === photo.branchId)) throw new Error('Photograph evidence link is missing.');
+    });
+    await write(['workspaces', 'photos'], tx => {
+      tx.objectStore('workspaces').put(workspace);
+      addedPhotos.forEach(photo => tx.objectStore('photos').put(photo));
+    });
+  }
+  async function removeEvidenceWithPhoto(workspace, photoId) {
+    C.model.validateWorkspace(workspace);
+    await write(['workspaces', 'photos'], tx => {
+      tx.objectStore('workspaces').put(workspace);
+      if (photoId) tx.objectStore('photos').delete(photoId);
+    });
+  }
 
   function blobToDataUrl(blob) {
     return new Promise((resolve, reject) => {
@@ -101,20 +136,21 @@
     for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
     return new Blob([bytes], { type: match[1] });
   }
-  async function createBackup(workspace) {
+  async function makeBackup(workspace, storedPhotos) {
     C.model.validateWorkspace(workspace);
-    const photos = await Promise.all((await getPhotos()).map(async photo => {
-      validatePhoto(photo, workspace);
+    validatePhotoLinks(workspace, storedPhotos);
+    const photos = await Promise.all(storedPhotos.map(async photo => {
       const { blob, ...metadata } = photo;
       return { ...metadata, dataUrl: await blobToDataUrl(blob) };
     }));
     return { format: 'network-refresh-cockpit-backup', version: 1, exportedAt: new Date().toISOString(), workspace: C.model.copy(workspace), photos };
   }
+  async function createBackup(workspace) { return makeBackup(workspace, await getPhotos()); }
   function parseBackup(text) {
     let backup;
     try { backup = JSON.parse(text); } catch { throw new Error('The selected file is not valid JSON.'); }
     if (!backup || backup.format !== 'network-refresh-cockpit-backup' || backup.version !== 1 || !Array.isArray(backup.photos) || backup.photos.length > 2000) throw new Error('Unsupported cockpit backup format.');
-    const workspace = C.model.validateWorkspace(backup.workspace);
+    const workspace = C.model.migrateWorkspace(backup.workspace, backup.photos);
     const photoIds = new Set();
     const photos = backup.photos.map(item => {
       if (!item || photoIds.has(item.id)) throw new Error('Duplicate or invalid photo in backup.');
@@ -124,11 +160,12 @@
       const photo = { ...metadata, blob };
       return validatePhoto(photo, workspace);
     });
+    validatePhotoLinks(workspace, photos);
     return { workspace, photos };
   }
   async function restoreBackup(backup) {
     const workspace = C.model.validateWorkspace(backup.workspace);
-    backup.photos.forEach(photo => validatePhoto(photo, workspace));
+    validatePhotoLinks(workspace, backup.photos);
     await write(['workspaces', 'photos'], tx => {
       const workspaces = tx.objectStore('workspaces');
       const photos = tx.objectStore('photos');
@@ -137,5 +174,5 @@
       backup.photos.forEach(photo => photos.put(photo));
     });
   }
-  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, getPhotos, addPhoto, addPhotos, removePhoto, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
+  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, getPhotos, addPhoto, addPhotos, removePhoto, saveEvidenceWithPhotos, removeEvidenceWithPhoto, makeBackup, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
 })();
