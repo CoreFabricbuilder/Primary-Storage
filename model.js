@@ -17,7 +17,7 @@
   const validationStatuses = Object.freeze(['Unknown', 'Not Started', 'Pending Architect Review', 'Architect Confirmed', 'As-Built']);
   const evidenceTypes = Object.freeze(['Photograph', 'Document reference', 'Workshop note', 'Configuration reference', 'Spreadsheet reference', 'Manual observation']);
   const evidenceObjectKinds = Object.freeze(['Branch', 'Cabinet', 'Device', 'Interface', 'Circuit', 'Wireless AP', 'Switch']);
-  const collections = Object.freeze(['domains', 'sites', 'branchPatterns', 'branches', 'branchAttributes', 'branchEvidence', 'devices', 'interfaces', 'circuits', 'vlans', 'vrfs', 'sdwanVpns', 'subnets', 'routingAdjacencies', 'services', 'components', 'componentStates', 'topologyLinks', 'lldReadiness', 'decisions', 'dependencies', 'sources', 'facts', 'evidence', 'validationRules', 'validationResults']);
+  const collections = Object.freeze(['domains', 'sites', 'branchPatterns', 'branches', 'branchAttributes', 'branchEvidence', 'devices', 'interfaces', 'circuits', 'vlans', 'vrfs', 'sdwanVpns', 'subnets', 'routingAdjacencies', 'services', 'components', 'componentStates', 'topologyLinks', 'lldReadiness', 'decisions', 'dependencies', 'sources', 'facts', 'evidence', 'validationRules', 'validationResults', 'assuranceRules', 'assuranceObservations', 'assuranceBaselines', 'assuranceRuns', 'assuranceResults', 'assuranceExceptions', 'acceptanceGates', 'acceptanceRecords']);
   const idPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 
   function fail(message) { throw new Error(message); }
@@ -36,7 +36,7 @@
     if (!ids.has(value)) fail(`Missing ${field} reference.`);
   }
   function validateWorkspace(data) {
-    if (!data || typeof data !== 'object' || Array.isArray(data) || data.schemaVersion !== 2 || data.id !== 'active') fail('Unsupported cockpit workspace schema.');
+    if (!data || typeof data !== 'object' || Array.isArray(data) || data.schemaVersion !== 3 || data.id !== 'active') fail('Unsupported cockpit workspace schema.');
     if (!data.programme || typeof data.programme !== 'object') fail('Missing programme.');
     requireId(data.programme.id, 'programme ID');
     requireText(data.programme.name, 'programme name', 200);
@@ -237,6 +237,8 @@
     for (const item of data.evidence) { requireRef(item.factId, sets.facts, 'evidence fact'); requireRef(item.sourceId, sets.sources, 'evidence source', true); requireText(item.note, 'evidence note'); }
     for (const result of data.validationResults) { requireRef(result.ruleId, sets.validationRules, 'validation rule'); requireRef(result.factId, sets.facts, 'validation fact'); }
     for (const subnet of data.subnets) { requireRef(subnet.siteId, sets.sites, 'subnet site'); requireText(subnet.cidr, 'subnet CIDR', 80); }
+    if (!C.assurance) fail('Assurance model is unavailable.');
+    C.assurance.validate(data);
     return data;
   }
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
@@ -283,38 +285,49 @@
     return validateWorkspace(next);
   }
   function migrateWorkspace(data, legacyPhotos = []) {
-    if (data?.schemaVersion === 2) return validateWorkspace(data);
-    if (!data || data.schemaVersion !== 1 || !Array.isArray(data.branches) || !Array.isArray(data.branchPatterns)) fail('Unsupported cockpit workspace schema.');
+    if (data?.schemaVersion === 3) return validateWorkspace(data);
+    if (!data || ![1, 2].includes(data.schemaVersion) || !Array.isArray(data.branches) || !Array.isArray(data.branchPatterns)) fail('Unsupported cockpit workspace schema.');
     const next = copy(data);
-    next.schemaVersion = 2;
-    next.branchAttributes = [];
-    next.branchEvidence = [];
-    next.branchPatterns = next.branchPatterns.map((pattern, index) => ({
+    if (next.schemaVersion === 1) {
+      next.schemaVersion = 2;
+      next.branchAttributes = [];
+      next.branchEvidence = [];
+      next.branchPatterns = next.branchPatterns.map((pattern, index) => ({
       ...pattern, code: `BP-LEGACY-${String(index + 1).padStart(2, '0')}`,
       intendedUse: pattern.description || '',
       expectations: Object.fromEntries(expectationKeys.map(key => [key, null])),
-    }));
-    if (next.programme.isDemo && C.demo?.create) {
-      for (const pattern of C.demo.create().branchPatterns) {
-        const index = next.branchPatterns.findIndex(item => item.id === pattern.id);
-        if (index >= 0) next.branchPatterns[index] = pattern;
-        else next.branchPatterns.push(pattern);
+      }));
+      if (next.programme.isDemo && C.demo?.create) {
+        for (const pattern of C.demo.create().branchPatterns) {
+          const index = next.branchPatterns.findIndex(item => item.id === pattern.id);
+          if (index >= 0) next.branchPatterns[index] = pattern;
+          else next.branchPatterns.push(pattern);
+        }
       }
-    }
-    next.branches = next.branches.map(branch => ({ ...branch,
+      next.branches = next.branches.map(branch => ({ ...branch,
       siteCode: '', locationDescription: '', currentStateConfidence: 'Unknown',
       deploymentReadiness: 'Unknown', validationStatus: 'Unknown', lastUpdated: '',
-    }));
-    for (const photo of legacyPhotos) {
-      if (!next.branches.some(branch => branch.id === photo.branchId)) continue;
-      next.branchEvidence.push({ id: newId(), branchId: photo.branchId, type: 'Photograph',
+      }));
+      for (const photo of legacyPhotos) {
+        if (!next.branches.some(branch => branch.id === photo.branchId)) continue;
+        next.branchEvidence.push({ id: newId(), branchId: photo.branchId, type: 'Photograph',
         objectKind: photo.deviceId ? 'Device' : 'Branch', objectId: photo.deviceId || photo.branchId,
         photoId: photo.id, source: photo.sourceLabel || 'User-selected photograph',
         date: /^\d{4}-\d{2}-\d{2}/.test(photo.addedAt || '') ? photo.addedAt.slice(0, 10) : '',
         classification: classifications.includes(photo.classification) ? photo.classification : 'Observed',
         confidence: 'Unknown', notes: photo.note || '',
-      });
+        });
+      }
     }
+    next.schemaVersion = 3;
+    next.assuranceRules = C.assurance.seedRules();
+    next.acceptanceGates = C.assurance.seedGates();
+    next.assuranceObservations = [];
+    next.assuranceBaselines = [];
+    next.assuranceRuns = [];
+    next.assuranceResults = [];
+    next.assuranceExceptions = [];
+    next.acceptanceRecords = [];
     return validateWorkspace(next);
   }
   function updateBranch(data, branchId, fields) {

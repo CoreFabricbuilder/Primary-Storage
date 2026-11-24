@@ -138,10 +138,37 @@
   ];
   const validationRules = [{ id: 'rule-source-required', name: 'Architectural facts require a source', description: 'A non-Unknown fact should identify provenance.' }];
   const validationResults = [{ id: 'result-teraco-source', ruleId: 'rule-source-required', factId: 'fact-teraco-path', outcome: 'Pass', note: 'Synthetic source is identified.' }];
+  const assuranceRules = C.assurance.seedRules();
+  const acceptanceGates = C.assurance.seedGates();
+  const baselineValues = (patternId, extras = {}) => {
+    const pattern = branchPatterns.find(item => item.id === patternId);
+    return Object.fromEntries(assuranceRules.map(rule => [rule.id, extras[rule.code] ?? (rule.patternKey ? pattern.expectations[rule.patternKey] : null)]));
+  };
+  const assuranceBaselines = [
+    { id: 'baseline-syn-north', branchId: 'branch-north', name: 'Synthetic resilient branch baseline', status: 'Active', source: 'Synthetic design workshop example', createdAt: '2026-11-24T00:00:00Z', values: baselineValues('pattern-dual-transport', {
+      'LAN-SW-MODEL': 'Cisco Catalyst 9200', 'LAN-UPLINK-MODE': 'LACP', 'LAN-NATIVE-VLAN': '999', 'LAN-POE': 'Required',
+      'LAN-MGMT-CONFIG': 'Dedicated management VRF', 'WIFI-AP-MODEL': 'Meraki MR46', 'WIFI-VLAN-MAP': 'Corporate:110, Guest:120',
+      'WIFI-RF-PROFILE': 'Branch Standard', 'WIFI-MGMT-STATE': 'Online', 'SDW-COLOURS': 'biz-internet, mpls', 'SDW-SERVICE-SIDE': 'Up',
+    }) },
+    { id: 'baseline-syn-south', branchId: 'branch-south', name: 'Synthetic compact branch baseline', status: 'Active', source: 'Synthetic design workshop example', createdAt: '2026-11-24T00:00:00Z', values: baselineValues('pattern-compact') },
+  ];
+  const assuranceObservations = [
+    ['branch-north', 'LAN-SW-COUNT', 'Observed', '1', 'Synthetic manual inventory'],
+    ['branch-north', 'LAN-SW-MODEL', 'Observed', 'Cisco Catalyst 9200', 'Synthetic manual inventory'],
+    ['branch-north', 'LAN-ALLOWED-VLANS', 'Observed', '110', 'Synthetic manual configuration review'],
+    ['branch-north', 'WIFI-AP-COUNT', 'Observed', '1', 'Synthetic Meraki observation'],
+    ['branch-north', 'WIFI-AP-MODEL', 'Observed', 'Meraki MR46', 'Synthetic Meraki observation'],
+    ['branch-north', 'SDW-EDGE-COUNT', 'Observed', '1', 'Synthetic SD-WAN observation'],
+    ['branch-north', 'SDW-TRANSPORTS', 'Observed', 'Internet', 'Synthetic SD-WAN observation'],
+    ['branch-north', 'SDW-EDGE-COUNT', 'As-Built', '1', 'Synthetic as-built note'],
+    ['branch-south', 'LAN-SW-COUNT', 'Observed', '1', 'Synthetic manual inventory'],
+  ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
+    ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 2, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 3, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
+    assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
   };
-  C.demo = Object.freeze({ create: () => C.model.validateWorkspace(C.model.copy(workspace)) });
+  C.demo = Object.freeze({ create: () => C.assurance.runValidation(C.model.validateWorkspace(C.model.copy(workspace)), 'branch-north').data });
 })();
