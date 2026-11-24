@@ -1,9 +1,9 @@
 # Project state
 
-Phase 3 branch: `codex/phase-3-deployment-assurance`, created from merged main `428c30e`. The application remains a direct-file browser app with IndexedDB, JSON backups and no runtime build, server, AI or vendor API.
+Phase 4 branch: `codex/phase-4-meraki-integration`, created from merged main `634da45`. The application remains a direct-file browser app with IndexedDB and JSON backups. The browser has no network access, build, server, AI, telemetry or cloud storage.
 
-Implemented: schema 3 migration; sourced Observed and As-Built records; draft/active/superseded Design Intent baselines; 22 synthetic deterministic rules; immutable validation runs and results; explicit exceptions; Critical and mandatory acceptance gates; architect acceptance records; six deployment assurance screens; and separate Physical, SD-WAN, LAN, Wi-Fi, Routing and Management results on Branch Detail. Existing branch intelligence and architecture views remain available.
+Implemented: schema 4 migration; Meraki Review screen; strict local snapshot parser; explicit branch mapping; staged Pending candidates with provenance; individual Apply as Observed or Dismiss decisions; synthetic Meraki demonstration data; and an optional macOS read-only collector using Keychain and built-in tools. The collector projects only supported fields into the snapshot. Design Intent, architect confirmation, baselines and existing validation runs stay separate.
 
-Verification: 19 model/storage tests and JavaScript syntax checks pass. Chromium UI smoke testing covered all six new screens, source capture, validation runs, exception approval, Critical gate failure, baseline editing/activation, JSON export, persistence and absence of external requests. `git diff --check` passes. No production build is needed.
+Verification: 23 dependency-free Node tests, JavaScript and Bash syntax checks, `git diff --check`, and a Chromium UI smoke test of the review screen and persisted Apply action. Live Meraki/Keychain collection requires a macOS account with read-only Dashboard access; no customer data or credentials are in Git. No production build exists.
 
-Next: review and merge this PR before Phase 4 branches from updated main. Meraki and Catalyst SD-WAN APIs, credentials, native packaging, cloud storage and customer material are outside this phase.
+Next: review and merge this PR before Phase 5 branches from updated main. Catalyst SD-WAN Manager integration and native packaging remain deferred.

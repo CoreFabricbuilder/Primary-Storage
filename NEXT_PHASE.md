@@ -1,3 +1,3 @@
 # Next phase
 
-After Phase 3 review and merge, branch `codex/phase-4-meraki-integration` from updated main. Introduce a local, read-only Meraki observation adapter with credentials kept outside SQLite/browser data and explicit architect review before any confirmation. Preserve Design Intent, provenance and deterministic validation; do not silently import or promote vendor observations. Native packaging remains deferred.
+After Phase 4 review and merge, branch `codex/phase-5-sdwan-integration` from updated main. Add a local read-only Catalyst SD-WAN Manager snapshot adapter following the Meraki pattern: credentials outside browser data, explicit branch mapping and per-candidate review before any Observed record is added. Preserve Design Intent, provenance, immutable runs and architect confirmation. Keep the core browser app usable from `index.html`; native packaging remains deferred.

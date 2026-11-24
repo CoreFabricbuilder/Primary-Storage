@@ -165,10 +165,25 @@
   ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
     ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 3, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 4, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
     assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
+    merakiBatches: [], merakiCandidates: [],
   };
-  C.demo = Object.freeze({ create: () => C.assurance.runValidation(C.model.validateWorkspace(C.model.copy(workspace)), 'branch-north').data });
+  const syntheticMerakiSnapshot = {
+    format: C.meraki.FORMAT, version: 1, generatedAt: '2026-11-24T00:00:00Z', organizationId: 'org-synthetic',
+    network: { id: 'L_synthetic_north', name: 'Synthetic Branch North', organizationId: 'org-synthetic' },
+    devices: [
+      { serial: 'SYN-MS-01', networkId: 'L_synthetic_north', model: 'MS120-8', name: 'Synthetic switch' },
+      { serial: 'SYN-MR-01', networkId: 'L_synthetic_north', model: 'MR46', name: 'Synthetic AP' },
+    ],
+    statuses: [{ serial: 'SYN-MS-01', status: 'online' }, { serial: 'SYN-MR-01', status: 'online' }],
+    ssids: [{ number: 0, name: 'Corporate', enabled: true, vlanId: 110 }],
+    coverage: { statuses: true, ssids: true },
+  };
+  C.demo = Object.freeze({ create: () => {
+    const data = C.assurance.runValidation(C.model.validateWorkspace(C.model.copy(workspace)), 'branch-north').data;
+    return C.meraki.stageSnapshot(data, syntheticMerakiSnapshot, 'branch-north').data;
+  } });
 })();

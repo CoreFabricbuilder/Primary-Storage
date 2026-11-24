@@ -6,6 +6,7 @@
     data: null, screen: 'overview', state: 'Current', domainFilter: null,
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
     selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
+    merakiBranchId: null, pendingMerakiSnapshot: null,
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
@@ -229,6 +230,8 @@
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
       case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
+      case 'apply-meraki': await persist(C.meraki.applyCandidate(ui.data, id), 'Meraki candidate recorded as Observed. Run validation separately.'); break;
+      case 'dismiss-meraki': await persist(C.meraki.dismissCandidate(ui.data, id), 'Meraki candidate dismissed.'); break;
       case 'new-branch': ui.newBranch = true; navigate('branches'); break;
       case 'cancel-new-branch': ui.newBranch = false; render(); break;
       case 'select-pattern': ui.selectedPatternId = id; render(); break;
@@ -322,6 +325,16 @@
     if (target.id === 'import-file') { const file = target.files[0]; target.value = ''; run(() => importBackup(file)); }
     if (target.id === 'evidence-type') updateEvidenceInput();
     if (target.id === 'assurance-branch') { ui.assuranceBranchId = target.value; ui.selectedRunId = null; ui.selectedBaselineId = null; render(); }
+    if (target.id === 'meraki-branch') { ui.merakiBranchId = target.value; render(); }
+    if (target.id === 'meraki-file') {
+      const file = target.files[0]; target.value = '';
+      if (file) run(async () => {
+        ui.pendingMerakiSnapshot = null;
+        if (file.size > C.meraki.MAX_SNAPSHOT_BYTES) throw new Error('Meraki snapshot exceeds 30 MB.');
+        ui.pendingMerakiSnapshot = C.meraki.parseSnapshot(await file.text());
+        render(); toast('Meraki snapshot loaded for review.');
+      });
+    }
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
@@ -336,6 +349,16 @@
     if (event.target.matches('#assurance-observation-form')) { event.preventDefault(); run(() => saveAssuranceObservation(event.target)); }
     if (event.target.matches('#assurance-exception-form')) { event.preventDefault(); run(() => saveAssuranceException(event.target)); }
     if (event.target.matches('#assurance-acceptance-form')) { event.preventDefault(); run(() => saveAssuranceAcceptance(event.target)); }
+    if (event.target.matches('#meraki-stage-form')) {
+      event.preventDefault();
+      const branchId = String(new FormData(event.target).get('branchId') || '');
+      run(async () => {
+        if (!ui.pendingMerakiSnapshot) throw new Error('Select a snapshot first.');
+        const result = C.meraki.stageSnapshot(ui.data, ui.pendingMerakiSnapshot, branchId);
+        ui.pendingMerakiSnapshot = null; ui.merakiBranchId = branchId;
+        await persist(result.data, `${result.count} Meraki candidates staged for review.`);
+      });
+    }
   });
   async function init() {
     try {

@@ -65,3 +65,14 @@
 .assurance-branch-grid>div{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid #304e63;border-radius:8px;background:#1a3246;padding:10px;font-size:.72rem}
 @media(max-width:850px){.readiness-domain-grid,.assurance-branch-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.sidebar nav{overflow-x:auto;overflow-y:hidden}.assurance-nav-label{display:none}}
+
+/* Phase 4 Meraki candidate review */
+.file-picker{display:grid;gap:8px;max-width:360px;margin-top:14px;color:#a4bfce;font-size:.75rem;font-weight:650}
+.meraki-candidate{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-top:1px solid #2d465a;padding:14px 0}
+.meraki-candidate>div:first-child{min-width:0}
+.meraki-candidate strong{font-size:.82rem}
+.meraki-candidate .badge{margin-left:8px}
+.meraki-candidate p{margin:7px 0;overflow-wrap:anywhere}
+.meraki-candidate small{color:#8daebe;overflow-wrap:anywhere}
+.meraki-candidate .exception-actions{flex-shrink:0;margin-top:0}
+@media(max-width:760px){.meraki-candidate{flex-direction:column}.meraki-candidate .exception-actions{flex-shrink:1}}
