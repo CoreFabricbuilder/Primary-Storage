@@ -11,3 +11,8 @@
 - Branch evidence metadata and photograph Blobs are linked by stable photo ID; photo changes are atomic across both IndexedDB stores. Non-photo evidence stores references only.
 - The estate matrix shows classifications and partial coverage rather than a project percentage. Current-versus-target deltas are comparisons, not validation or acceptance results.
 - Schema 1 browser workspaces and JSON backups migrate to schema 2. Existing evidence classifications are preserved.
+- Phase 3 keeps fact-validation records separate from deployment assurance records. The new `assurance.js` module evaluates fixed comparators (quantity, set, exact value) without AI or vendor APIs.
+- Baselines snapshot Design Intent and become immutable when activated. Observed and As-Built records append with source; runs snapshot their rule results and provenance.
+- Critical mandatory failures always fail the acceptance gate, even with an approved exception. Unknown mandatory results block acceptance; noncritical approved exceptions may permit explicit conditional acceptance.
+- Synthetic LAN, Wi-Fi, SD-WAN, physical, routing and management rules demonstrate the six rule categories. Missing target or observation values remain Unknown.
+- Schema migration adds the rule catalogue and gates to an existing workspace without injecting synthetic observations, baselines or runs. New demonstration workspaces alone contain synthetic assurance examples.

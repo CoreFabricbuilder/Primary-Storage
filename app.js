@@ -5,7 +5,8 @@
   const ui = {
     data: null, screen: 'overview', state: 'Current', domainFilter: null,
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
-    selectedBranchId: null, selectedPatternId: null, newBranch: false, decisionSearch: '', camera: null, topologyController: null,
+    selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
+    decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
   const el = id => document.getElementById(id);
@@ -125,6 +126,7 @@
     ui.data = backup.workspace;
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
     ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
+    ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
   async function saveBranchSummary(form) {
@@ -200,6 +202,24 @@
     ui.selectedPatternId = result.id;
     await persist(result.data, 'Branch pattern saved.');
   }
+  async function saveAssuranceObservation(form) {
+    const values = new FormData(form);
+    const result = C.assurance.recordObservation(ui.data, {
+      branchId: String(values.get('branchId') || ''), ruleId: String(values.get('ruleId') || ''),
+      perspective: String(values.get('perspective') || ''), value: String(values.get('value') || ''), source: String(values.get('source') || ''),
+    });
+    await persist(result.data, 'Sourced value saved. Run validation to compare it with Design Intent.');
+  }
+  async function saveAssuranceException(form) {
+    const values = new FormData(form);
+    const result = C.assurance.createException(ui.data, String(values.get('resultId') || ''), String(values.get('reason') || ''));
+    await persist(result.data, 'Exception recorded for architect review.');
+  }
+  async function saveAssuranceAcceptance(form) {
+    const values = new FormData(form);
+    const next = C.assurance.recordAcceptance(ui.data, String(values.get('runId') || ''), String(values.get('architect') || ''), String(values.get('notes') || ''));
+    await persist(next, 'Architect acceptance recorded.');
+  }
   async function action(button) {
     const id = button.dataset.id;
     switch (button.dataset.action) {
@@ -208,10 +228,35 @@
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
+      case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
       case 'new-branch': ui.newBranch = true; navigate('branches'); break;
       case 'cancel-new-branch': ui.newBranch = false; render(); break;
       case 'select-pattern': ui.selectedPatternId = id; render(); break;
       case 'new-pattern': ui.selectedPatternId = 'new'; render(); break;
+      case 'select-run': ui.selectedRunId = id; render(); break;
+      case 'select-baseline': ui.selectedBaselineId = id; render(); break;
+      case 'create-baseline': {
+        const branchId = ui.assuranceBranchId || ui.data.branches[0]?.id;
+        const result = C.assurance.createBaseline(ui.data, branchId);
+        ui.selectedBaselineId = result.id;
+        await persist(result.data, 'Draft baseline created from the branch pattern.'); break;
+      }
+      case 'activate-baseline': await persist(C.assurance.activateBaseline(ui.data, id), 'Design baseline activated.'); break;
+      case 'save-baseline-target': {
+        const row = button.closest('[data-baseline-row]');
+        const next = C.assurance.setBaselineTarget(ui.data, row.dataset.baselineId, row.dataset.ruleId, row.querySelector('[data-target]').value);
+        await persist(next, 'Baseline target saved.'); break;
+      }
+      case 'run-validation': {
+        const branchId = ui.assuranceBranchId || ui.data.branches[0]?.id;
+        const result = C.assurance.runValidation(ui.data, branchId);
+        ui.selectedRunId = result.id;
+        await persist(result.data, 'Deterministic validation complete.'); break;
+      }
+      case 'decide-exception': {
+        const approver = button.closest('[data-exception-id]').querySelector('[data-approver]').value;
+        await persist(C.assurance.decideException(ui.data, id, button.dataset.status, approver), `Exception ${button.dataset.status.toLowerCase()}.`); break;
+      }
       case 'zoom-in': ui.topologyController?.zoomIn(); break;
       case 'zoom-out': ui.topologyController?.zoomOut(); break;
       case 'zoom-fit': ui.topologyController?.fit(); break;
@@ -276,6 +321,7 @@
     if (target.id === 'dependency-component') { ui.selectedComponentId = target.value; render(); }
     if (target.id === 'import-file') { const file = target.files[0]; target.value = ''; run(() => importBackup(file)); }
     if (target.id === 'evidence-type') updateEvidenceInput();
+    if (target.id === 'assurance-branch') { ui.assuranceBranchId = target.value; ui.selectedRunId = null; ui.selectedBaselineId = null; render(); }
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
@@ -287,6 +333,9 @@
     if (event.target.matches('#pattern-form')) { event.preventDefault(); run(() => savePattern(event.target)); }
     if (event.target.matches('#create-branch-form')) { event.preventDefault(); run(() => createBranch(event.target)); }
     if (event.target.matches('[data-asset-form]')) { event.preventDefault(); run(() => saveAsset(event.target)); }
+    if (event.target.matches('#assurance-observation-form')) { event.preventDefault(); run(() => saveAssuranceObservation(event.target)); }
+    if (event.target.matches('#assurance-exception-form')) { event.preventDefault(); run(() => saveAssuranceException(event.target)); }
+    if (event.target.matches('#assurance-acceptance-form')) { event.preventDefault(); run(() => saveAssuranceAcceptance(event.target)); }
   });
   async function init() {
     try {

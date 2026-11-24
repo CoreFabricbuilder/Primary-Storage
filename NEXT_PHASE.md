@@ -1,3 +1,3 @@
 # Next phase
 
-After Phase 2 review and merge, branch `codex/phase-3-deployment-assurance` from updated main. Add a deterministic rules engine comparing Design Intent, Observed, Validated and As-Built with sourced results, exceptions, baselines and mandatory acceptance gates. Keep vendor APIs, AI and native packaging out of Phase 3. Preserve sparse branch records and never turn photo evidence into a technical fact automatically.
+After Phase 3 review and merge, branch `codex/phase-4-meraki-integration` from updated main. Introduce a local, read-only Meraki observation adapter with credentials kept outside SQLite/browser data and explicit architect review before any confirmation. Preserve Design Intent, provenance and deterministic validation; do not silently import or promote vendor observations. Native packaging remains deferred.

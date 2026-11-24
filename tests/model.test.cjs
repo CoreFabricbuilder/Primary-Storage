@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'demo.js', 'storage.js', 'views.js']) {
+  for (const file of ['model.js', 'assurance.js', 'demo.js', 'storage.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -80,7 +80,7 @@ test('view renderers escape imported text', () => {
 test('file-open entrypoint has only locally bundled assets and no module loader', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const assets = [...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(assets, ['styles.css', 'model.js', 'demo.js', 'storage.js', 'topology.js', 'views.js', 'app.js']);
+  assert.deepEqual(assets, ['styles.css', 'model.js', 'assurance.js', 'demo.js', 'storage.js', 'topology.js', 'views.js', 'app.js']);
   for (const asset of assets) assert.ok(fs.existsSync(path.join(root, asset)), `${asset} exists`);
   assert.ok(!html.includes('type="module"'));
   assert.match(html, /connect-src 'none'/);

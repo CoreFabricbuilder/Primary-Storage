@@ -35,3 +35,33 @@
 .inventory-forms label{display:grid;gap:5px;color:#a4bfce;font-size:.7rem}
 .inventory-forms .button{justify-self:start}
 @media(max-width:650px){.inventory-grid,.inventory-forms{grid-template-columns:1fr}}
+
+/* Phase 3 deployment assurance */
+.sidebar nav{overflow-y:auto;min-height:0;padding-right:3px}
+.assurance-nav-label{margin:20px 0 8px;padding:0 12px}
+.metric .metric-label{font-size:1.12rem;letter-spacing:-.02em;line-height:1.25;overflow-wrap:anywhere}
+.assurance-toolbar{justify-content:space-between}
+.assurance-toolbar .muted{margin:0}
+.assurance-table{min-width:970px}
+.assurance-table th:first-child{min-width:190px}
+.assurance-table th small,.assurance-table td small{display:block;color:#8daebe;font-weight:400;margin-top:4px;white-space:normal}
+.assurance-table td{min-width:130px;white-space:normal;overflow-wrap:anywhere}
+.assurance-form{display:grid;gap:12px;margin-top:14px}
+.assurance-form label{display:grid;gap:6px;color:#a4bfce;font-size:.72rem;font-weight:650}
+.assurance-form button[type=submit]{justify-self:start}
+.readiness-domain-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.readiness-domain-grid .panel{margin-bottom:0}
+.assurance-counts{display:flex;flex-wrap:wrap;gap:5px 12px;color:#a1bac9;font-size:.73rem}
+.assurance-rule-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid #2d465a;font-size:.75rem}
+.assurance-rule-row span:first-child{min-width:0}
+.assurance-rule-row small{display:block;color:#88a8b9;margin-top:4px}
+.run-list,.baseline-list,.exception-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.run-selected{border-color:#65c9d6;background:#235469}
+.baseline-list .decision-item{width:min(260px,100%);margin:0}
+.exception-actions{align-items:center}
+.exception-actions input{min-width:180px}
+.assurance-exception-card .badge{margin-left:7px}
+.assurance-branch-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.assurance-branch-grid>div{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1px solid #304e63;border-radius:8px;background:#1a3246;padding:10px;font-size:.72rem}
+@media(max-width:850px){.readiness-domain-grid,.assurance-branch-grid{grid-template-columns:1fr}}
+@media(max-width:760px){.sidebar nav{overflow-x:auto;overflow-y:hidden}.assurance-nav-label{display:none}}
