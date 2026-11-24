@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core window permissions only; project files are handled by one Rust command.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

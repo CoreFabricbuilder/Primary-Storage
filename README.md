@@ -1,22 +1,25 @@
-# Atlas Enterprise Architecture Workspace
+# Network Refresh Architecture Cockpit
 
-A small, dependency-free application for mapping enterprise capabilities, applications, data assets, technology, and their relationships.
+A local macOS architecture workspace foundation for an enterprise Network Refresh programme. Phase 0 provides a desktop shell and persistent SQLite storage, without an architecture dashboard.
 
-## Run
+## Develop on macOS
 
-Requires Node.js 20 or later. From this repository:
+Install Node.js 20.19+ or 22.12+, Rust stable, and Xcode Command Line Tools. Then:
 
 ```bash
-npm start
+npm ci
+npm run tauri:dev
 ```
 
-Open `http://localhost:3000`. Set `PORT` to use another port. Run the model tests with `npm test`.
+Choose a project directory outside this Git repository. The app creates `.network-refresh-cockpit.sqlite3` in that directory. Choose the same directory on later launches to reopen it. Keep customer documents and runtime data outside the repository.
 
-## What you can do
+## Checks
 
-- Add, edit, search, filter, and remove architecture elements.
-- Connect elements and inspect their relationships in the map.
-- Track capability coverage by active applications and identify retiring elements.
-- Import and export the whole workspace as JSON.
+```bash
+npm test
+npm run build
+npm run test:rust
+npm run check:rust
+```
 
-The app starts with sample architecture data. Changes are stored in your browser's local storage, so each browser has its own workspace. Export JSON regularly to back up or share a model. There is no server-side database or login.
+`npm run tauri:build` packages a macOS `.app` when run on macOS with the platform build tools. The Vite development server listens on `127.0.0.1` only; the packaged app has no application network client or inbound listener.
