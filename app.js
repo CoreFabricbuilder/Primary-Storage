@@ -5,7 +5,7 @@
   const ui = {
     data: null, screen: 'overview', state: 'Current', domainFilter: null,
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
-    selectedBranchId: null, decisionSearch: '', camera: null, topologyController: null,
+    selectedBranchId: null, selectedPatternId: null, newBranch: false, decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
   const el = id => document.getElementById(id);
@@ -54,7 +54,7 @@
         render();
       }, ui.camera);
     } else ui.topologyController = null;
-    if (ui.screen === 'branches') showPhotos(token).catch(failure);
+    if (ui.screen === 'branches') { showPhotos(token).catch(failure); updateEvidenceInput(); }
     if (ui.screen === 'decisions' && ui.decisionSearch) filterDecisions();
   }
   function navigate(screen) {
@@ -83,23 +83,26 @@
     const photos = await C.storage.getPhotos(branch.id);
     if (token !== ui.renderToken || !el('photo-gallery')) return;
     gallery.replaceChildren();
-    if (!photos.length) {
-      const empty = document.createElement('p'); empty.className = 'muted'; empty.textContent = 'No photographs have been added to this branch.';
-      gallery.append(empty); return;
-    }
     for (const photo of photos) {
+      const evidence = ui.data.branchEvidence.find(item => item.type === 'Photograph' && item.photoId === photo.id);
+      if (!evidence) continue;
       const card = document.createElement('article'); card.className = 'photo-card';
       const image = document.createElement('img');
       const url = URL.createObjectURL(photo.blob); ui.photoUrls.push(url);
       image.src = url; image.alt = photo.name; image.loading = 'lazy';
       const title = document.createElement('strong'); title.textContent = photo.name;
       const detail = document.createElement('small');
-      const device = ui.data.devices.find(item => item.id === photo.deviceId);
-      detail.textContent = `${device?.name || 'Branch'} · ${photo.classification} · ${photo.sourceLabel}`;
-      const button = document.createElement('button'); button.type = 'button'; button.className = 'text-link';
-      button.dataset.action = 'remove-photo'; button.dataset.id = photo.id; button.textContent = 'Remove photograph';
-      card.append(image, title, detail, button); gallery.append(card);
+      const target = C.model.branchEvidenceTargets(ui.data, branch.id).find(item => item.kind === evidence.objectKind && item.id === evidence.objectId);
+      detail.textContent = `${target?.label || evidence.objectKind} · ${evidence.classification} · ${evidence.source}`;
+      card.append(image, title, detail); gallery.append(card);
     }
+  }
+  function updateEvidenceInput() {
+    const input = el('evidence-photo-file');
+    const type = el('evidence-type');
+    if (!input || !type) return;
+    input.required = type.value === 'Photograph';
+    input.closest('label').hidden = type.value !== 'Photograph';
   }
   async function exportBackup() {
     status('Preparing JSON backup…');
@@ -121,22 +124,81 @@
     await C.storage.restoreBackup(backup);
     ui.data = backup.workspace;
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
-    ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null;
+    ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
-  async function uploadPhotos(files) {
-    if (!files.length) return;
+  async function saveBranchSummary(form) {
+    const values = new FormData(form);
+    const next = C.model.updateBranch(ui.data, String(values.get('branchId')), {
+      siteCode: String(values.get('siteCode') || '').trim(),
+      locationDescription: String(values.get('locationDescription') || '').trim(),
+      patternId: String(values.get('patternId') || ''),
+      currentStateConfidence: String(values.get('currentStateConfidence') || ''),
+      deploymentReadiness: String(values.get('deploymentReadiness') || ''),
+      validationStatus: String(values.get('validationStatus') || ''),
+    });
+    await persist(next, 'Branch summary saved.');
+  }
+  async function createBranch(form) {
+    const values = new FormData(form);
+    const result = C.model.createBranch(ui.data, {
+      name: String(values.get('name') || '').trim(), siteCode: String(values.get('siteCode') || '').trim(),
+      patternId: String(values.get('patternId') || ''),
+    });
+    ui.selectedBranchId = result.id;
+    ui.newBranch = false;
+    await persist(result.data, 'Branch created with Unknown architecture values.');
+  }
+  async function saveAsset(form) {
+    const values = new FormData(form);
+    const type = form.dataset.assetForm;
+    const fields = Object.fromEntries([...values].map(([key, value]) => [key, String(value).trim()]));
+    const result = C.model.addBranchAsset(ui.data, fields.branchId, type, fields);
+    await persist(result.data, `${type} added to branch.`);
+  }
+  async function saveAttribute(row) {
     const branch = ui.data.branches.find(item => item.id === ui.selectedBranchId) || ui.data.branches[0];
-    if (!branch) throw new Error('Select a branch before adding photographs.');
-    const deviceId = el('photo-device')?.value || null;
-    const photos = files.map(file => ({
-      id: C.model.newId(), branchId: branch.id, deviceId, name: file.name,
-      type: file.type, blob: file, addedAt: new Date().toISOString(),
-      note: '', sourceLabel: 'User-selected photograph', classification: 'Observed',
-    }));
-    await C.storage.addPhotos(photos, ui.data);
-    status('Photographs saved in this browser'); toast(`${photos.length} photograph${photos.length === 1 ? '' : 's'} saved.`);
-    render();
+    const value = field => row.querySelector(`[data-field=${field}]`).value.trim();
+    const next = C.model.upsertBranchAttribute(ui.data, {
+      branchId: branch.id, category: row.dataset.category, key: row.dataset.key,
+      value: value('value'), classification: value('classification'), source: value('source'), note: value('note'),
+    });
+    await persist(next, `${row.dataset.category} item saved.`);
+  }
+  async function saveEvidence(form) {
+    const values = new FormData(form);
+    const branchId = String(values.get('branchId'));
+    const [objectKind, objectId] = String(values.get('target') || '').split('|');
+    const type = String(values.get('type') || '');
+    const file = form.querySelector('#evidence-photo-file').files[0];
+    if (type === 'Photograph' && !file) throw new Error('Select a photograph to add.');
+    if (type !== 'Photograph' && file) throw new Error('Choose Photograph as the evidence type for an image file.');
+    const photoId = file ? C.model.newId() : null;
+    const fields = { branchId, type, objectKind, objectId, photoId,
+      source: String(values.get('source') || '').trim(), date: String(values.get('date') || ''),
+      classification: String(values.get('classification') || ''), confidence: String(values.get('confidence') || ''),
+      notes: String(values.get('notes') || '').trim(),
+    };
+    const result = C.model.upsertBranchEvidence(ui.data, fields);
+    if (file) {
+      const photo = { id: photoId, branchId, deviceId: ['Device', 'Wireless AP', 'Switch'].includes(objectKind) ? objectId : null,
+        name: file.name, type: file.type, blob: file, addedAt: new Date().toISOString(),
+        note: fields.notes, sourceLabel: fields.source, classification: fields.classification,
+      };
+      await C.storage.saveEvidenceWithPhotos(result.data, [photo]);
+      ui.data = result.data; status('Saved in this browser'); render(); toast('Photograph evidence saved.');
+    } else await persist(result.data, 'Branch evidence saved.');
+  }
+  async function savePattern(form) {
+    const values = new FormData(form);
+    const expectations = Object.fromEntries(C.model.expectationKeys.map(key => [key, String(values.get(key) || '').trim() || null]));
+    const result = C.model.upsertPattern(ui.data, {
+      id: String(values.get('id') || ''), code: String(values.get('code') || '').trim(),
+      name: String(values.get('name') || '').trim(), description: String(values.get('description') || '').trim(),
+      intendedUse: String(values.get('intendedUse') || '').trim(), expectations,
+    });
+    ui.selectedPatternId = result.id;
+    await persist(result.data, 'Branch pattern saved.');
   }
   async function action(button) {
     const id = button.dataset.id;
@@ -145,7 +207,11 @@
       case 'open-decision': case 'select-decision': ui.selectedDecisionId = id; navigate('decisions'); break;
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
-      case 'open-branch': ui.selectedBranchId = id; render(); break;
+      case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
+      case 'new-branch': ui.newBranch = true; navigate('branches'); break;
+      case 'cancel-new-branch': ui.newBranch = false; render(); break;
+      case 'select-pattern': ui.selectedPatternId = id; render(); break;
+      case 'new-pattern': ui.selectedPatternId = 'new'; render(); break;
       case 'zoom-in': ui.topologyController?.zoomIn(); break;
       case 'zoom-out': ui.topologyController?.zoomOut(); break;
       case 'zoom-fit': ui.topologyController?.fit(); break;
@@ -160,10 +226,12 @@
         const current = ui.data.dependencies.find(item => item.id === id);
         await persist(C.model.updateDependency(ui.data, id, current.status === 'Resolved' ? 'Unresolved' : 'Resolved'), 'Dependency updated.'); break;
       }
-      case 'upload-photo': el('photo-file').click(); break;
-      case 'remove-photo':
-        if (window.confirm('Remove this photograph from this browser?')) {
-          await C.storage.removePhoto(id); render(); toast('Photograph removed.');
+      case 'save-attribute': await saveAttribute(button.closest('[data-attribute-row]')); break;
+      case 'remove-evidence':
+        if (window.confirm('Remove this evidence record and its local photograph, if any?')) {
+          const result = C.model.removeBranchEvidence(ui.data, id);
+          await C.storage.removeEvidenceWithPhoto(result.data, result.photoId);
+          ui.data = result.data; status('Saved in this browser'); render(); toast('Evidence removed.');
         }
         break;
     }
@@ -207,13 +275,18 @@
     if (target.id === 'readiness-site') { ui.selectedSiteId = target.value; render(); }
     if (target.id === 'dependency-component') { ui.selectedComponentId = target.value; render(); }
     if (target.id === 'import-file') { const file = target.files[0]; target.value = ''; run(() => importBackup(file)); }
-    if (target.id === 'photo-file') { const files = [...target.files]; target.value = ''; run(() => uploadPhotos(files)); }
+    if (target.id === 'evidence-type') updateEvidenceInput();
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
   });
   document.addEventListener('submit', event => {
-    if (event.target.id === 'decision-form') { event.preventDefault(); run(() => saveDecision(event.target)); }
+    if (event.target.matches('#decision-form')) { event.preventDefault(); run(() => saveDecision(event.target)); }
+    if (event.target.matches('#branch-summary-form')) { event.preventDefault(); run(() => saveBranchSummary(event.target)); }
+    if (event.target.matches('#branch-evidence-form')) { event.preventDefault(); run(() => saveEvidence(event.target)); }
+    if (event.target.matches('#pattern-form')) { event.preventDefault(); run(() => savePattern(event.target)); }
+    if (event.target.matches('#create-branch-form')) { event.preventDefault(); run(() => createBranch(event.target)); }
+    if (event.target.matches('[data-asset-form]')) { event.preventDefault(); run(() => saveAsset(event.target)); }
   });
   async function init() {
     try {

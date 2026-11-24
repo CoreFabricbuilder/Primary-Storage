@@ -19,12 +19,13 @@ test('synthetic workspace has complete screen coverage and RFC1918 examples', ()
   const C = load();
   const data = C.demo.create();
   assert.equal(data.domains.length, 11);
-  assert.equal(data.branches.length, 2);
+  assert.equal(data.branches.length, 3);
+  assert.equal(data.branchPatterns.length, 3);
   assert.equal(data.lldReadiness.length, data.sites.length * 3 * 11);
   assert.equal(C.model.visibleComponents(data, 'Current').some(item => item.name === 'Catalyst SD-WAN'), false);
   assert.equal(C.model.visibleComponents(data, 'Transition').some(item => item.name === 'Catalyst SD-WAN'), true);
   assert.deepEqual([...data.subnets.map(item => item.cidr)], ['10.255.0.0/24', '10.10.0.0/16', '10.20.0.0/16', '10.101.0.0/24', '10.102.0.0/24']);
-  for (const screen of ['overview', 'topology', 'readiness', 'decisions', 'dependencies', 'branches']) {
+  for (const screen of ['overview', 'topology', 'readiness', 'decisions', 'dependencies', 'branches', 'estate', 'patterns']) {
     const html = C.views[screen](data, { state: 'Transition', domainFilter: null, selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null, selectedBranchId: null, decisionSearch: '' });
     assert.ok(html.length > 200, `${screen} rendered`);
   }
@@ -56,7 +57,8 @@ test('decisions and dependencies maintain stable references', () => {
 
 test('JSON backup parser validates photo association and keeps photo as Observed', () => {
   const C = load();
-  const data = C.demo.create();
+  const original = C.demo.create();
+  const data = C.model.upsertBranchEvidence(original, { id: 'be-photo-example', branchId: 'branch-north', type: 'Photograph', objectKind: 'Wireless AP', objectId: 'device-north-ap', photoId: 'photo-example', source: 'Synthetic example', date: '2026-11-24', classification: 'Observed', confidence: 'Low', notes: '' }).data;
   const photo = { id: 'photo-example', branchId: 'branch-north', deviceId: 'device-north-ap', name: 'Synthetic example.png', type: 'image/png', addedAt: '2026-11-24T00:00:00Z', note: '', sourceLabel: 'User-selected photograph', classification: 'Observed', dataUrl: 'data:image/png;base64,iVBORw0KGgo=' };
   const backup = { format: 'network-refresh-cockpit-backup', version: 1, workspace: data, photos: [photo] };
   const parsed = C.storage.parseBackup(JSON.stringify(backup));
