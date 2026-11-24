@@ -1,0 +1,16 @@
+:root { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #e8eef6; background: #101b2a; font-synthesis: none; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app-shell { max-width: 760px; margin: 0 auto; padding: 72px 36px; }
+.eyebrow { color: #74c4dd; font-size: 12px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.1; margin: 16px 0; }
+.intro { color: #b6c5d6; font-size: 18px; line-height: 1.5; }
+.status-card { margin-top: 52px; padding: 28px; border: 1px solid #33465d; border-radius: 14px; background: #17263a; }
+.status-card h2 { margin-top: 0; font-size: 20px; }
+.status-card p { color: #cad7e6; line-height: 1.5; }
+button { border: 0; border-radius: 8px; background: #55bddb; color: #092132; padding: 12px 18px; font: inherit; font-weight: 700; cursor: pointer; }
+button:hover:not(:disabled) { background: #8dd7ea; }
+button:disabled { opacity: .55; cursor: default; }
+.error { color: #ffadb2 !important; }
+.hint, .footnote { color: #91a7bd; font-size: 13px; }
+.footnote { margin-top: 24px; }
