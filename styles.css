@@ -138,3 +138,17 @@
 .flow-path{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
 .flow-path span{padding:7px 11px;background:#1d3d50;border:1px solid #42677c;border-radius:7px}
 .drift-table .attention{font-weight:700}
+.estate-source{display:inline-block;margin:0 0 18px;padding:8px 12px;border:1px solid #376171;border-radius:8px;background:#193748;color:#a7dce6;font-size:.75rem}
+.estate-bars{display:grid;gap:12px;margin:15px 0}
+.estate-bar-row{display:grid;grid-template-columns:minmax(95px,1fr) minmax(100px,2fr) 44px;gap:10px;align-items:center;font-size:.75rem}
+.estate-bar-row>span{overflow-wrap:anywhere}
+.estate-bar-row strong{text-align:right}
+.estate-bar-track{height:10px;border-radius:20px;background:#102638;overflow:hidden}
+.estate-bar-track span{display:block;height:100%;border-radius:20px;background:#60c5d5}
+.estate-quantity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:15px 0}
+.estate-quantity>div{padding:12px;background:#193748;border:1px solid #31566b;border-radius:8px}
+.estate-quantity strong,.estate-quantity span{display:block}
+.estate-quantity strong{font-size:1.5rem;color:#e9f7fd}
+.estate-quantity span{font-size:.72rem;color:#aac6d4}
+.estate-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+@media(max-width:550px){.estate-bar-row{grid-template-columns:80px 1fr 35px}.estate-quantity{grid-template-columns:1fr}}

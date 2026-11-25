@@ -84,6 +84,40 @@
   function latest(data, branchId) {
     return data.currentBranchReports.filter(item => item.branchId === branchId).at(-1) || null;
   }
+  function estateSummary(data) {
+    const records = data.branches.map(branch => ({ branch, report: latest(data, branch.id) })).filter(item => item.report);
+    const counts = key => {
+      const values = new Map();
+      for (const { report } of records) {
+        const value = report.fields[key]?.trim() || 'Unknown';
+        values.set(value, (values.get(value) || 0) + 1);
+      }
+      return [...values].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+    };
+    const quantity = key => records.reduce((result, { report }) => {
+      const raw = report.fields[key]?.trim() || '';
+      if (/^\d+$/.test(raw) && Number.isSafeInteger(Number(raw))) { result.total += Number(raw); result.covered++; }
+      return result;
+    }, { total: 0, covered: 0 });
+    const issueRows = records.map(item => ({ ...item, issues: warnings(item.report.fields) })).filter(item => item.issues.length).sort((a, b) => b.issues.length - a.issues.length || a.branch.name.localeCompare(b.branch.name));
+    const hasTarget = branch => {
+      const pattern = data.branchPatterns.find(item => item.id === branch.patternId);
+      return !!pattern && C.model.expectationKeys.some(key => pattern.expectations[key] !== null);
+    };
+    const branchSites = new Set(records.map(item => item.branch.siteId));
+    const importNames = new Map(data.currentReportImports.map(item => [item.id, item.fileName]));
+    const sourceNames = [...new Set(records.map(item => importNames.get(item.report.importId)).filter(Boolean))];
+    return {
+      totalBranches: data.branches.length, records, reportDate: records.map(item => item.report.sourceDate).filter(Boolean).sort().at(-1) || '', sourceNames,
+      primaryCovered: records.filter(({ report }) => report.fields['Primary Connectivity Type'] || report.fields['Primary Connectivity']).length,
+      secondaryCovered: records.filter(({ report }) => report.fields['Secondary Connectivity Type'] || report.fields['Secondary Connectivity']).length,
+      primaryTypes: counts('Primary Connectivity Type'), regions: counts('Region'),
+      switches: quantity('Total Switches'), aps: quantity('Total Aps'), issueRows,
+      branchesWithTarget: records.filter(({ branch }) => hasTarget(branch)).length,
+      assessedSites: new Set(data.lldReadiness.filter(item => item.state === 'Current' && item.status !== 'Unknown' && branchSites.has(item.siteId)).map(item => item.siteId)).size,
+      modelledSites: new Set(data.components.map(item => item.siteId).filter(id => branchSites.has(id))).size,
+    };
+  }
   function match(data, row) {
     const uidMatches = data.branches.filter(branch => branch.siteCode === row.uid);
     if (uidMatches.length > 1) throw new Error('More than one existing branch has the same Location UID. Resolve this before import.');
@@ -154,5 +188,5 @@
       const key = `${item.importId}:${item.uid}`; if (pairs.has(key)) throw new Error('Duplicate current branch report row.'); pairs.add(key);
     }
   }
-  C.currentReport = Object.freeze({ FIELDS, MAX_BYTES, decode, parse, plan, apply, validate, latest, emptyWorkspace, warnings });
+  C.currentReport = Object.freeze({ FIELDS, MAX_BYTES, decode, parse, plan, apply, validate, latest, estateSummary, emptyWorkspace, warnings });
 })();
