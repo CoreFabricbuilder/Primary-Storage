@@ -13,6 +13,7 @@
     driftBranchId: null, driftBaselineId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
     currentReportPreview: null,
+    selectedLibraryDocumentId: null, librarySearch: '',
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
@@ -128,13 +129,13 @@
     anchor.download = `network-refresh-cockpit-${new Date().toISOString().slice(0, 10)}.json`;
     document.body.append(anchor); anchor.click(); anchor.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-    status('Saved in this browser'); toast('JSON backup downloaded, including local photographs.');
+    status('Saved in this browser'); toast('JSON backup downloaded, including local documents and photographs.');
   }
   async function importBackup(file) {
     if (!file) return;
-    if (file.size > 150 * 1024 * 1024) throw new Error('Backup exceeds the 150 MB import limit.');
+    if (file.size > 250 * 1024 * 1024) throw new Error('Backup exceeds the 250 MB import limit.');
     const backup = C.storage.parseBackup(await file.text());
-    if (!window.confirm(`Restore “${backup.workspace.programme.name}” and ${backup.photos.length} photographs? This replaces this browser's current cockpit data.`)) return;
+    if (!window.confirm(`Restore “${backup.workspace.programme.name}”, ${backup.documents.length} local documents and ${backup.photos.length} photographs? This replaces this browser's current cockpit data.`)) return;
     await C.storage.restoreBackup(backup);
     ui.data = backup.workspace;
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
@@ -145,6 +146,7 @@
     ui.scenarioBranchId = null; ui.scenarioPatternId = 'assigned'; ui.scenarioState = 'Transition'; ui.scenarioFilter = 'All';
     ui.driftBranchId = null; ui.driftBaselineId = null;
     ui.transPreview = null; ui.currentReportPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
+    ui.selectedLibraryDocumentId = null; ui.librarySearch = '';
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
   async function saveBranchSummary(form) {
@@ -255,6 +257,40 @@
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
+      case 'open-library-document': ui.selectedLibraryDocumentId = id; navigate('library'); break;
+      case 'download-library-document': {
+        const item = ui.data.libraryDocuments.find(entry => entry.id === id && entry.storage === 'Local');
+        const file = await C.storage.getDocument(id);
+        if (!item || !file) throw new Error('Local document is missing from browser storage.');
+        const url = URL.createObjectURL(file.blob), anchor = document.createElement('a');
+        anchor.href = url; anchor.download = item.fileName; document.body.append(anchor); anchor.click(); anchor.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 60000); break;
+      }
+      case 'unlink-library-document': await persist(C.library.unlink(ui.data, id), 'Document association removed.'); break;
+      case 'remove-library-document': {
+        if (!window.confirm('Remove this library entry, its architecture links, and its local file if uploaded?')) break;
+        const result = C.library.remove(ui.data, id);
+        if (result.local) await C.storage.removeDocumentWithFile(result.data, id);
+        else await C.storage.saveWorkspace(result.data);
+        ui.data = result.data; ui.selectedLibraryDocumentId = null; status('Saved in this browser'); render(); toast('Document removed from library.'); break;
+      }
+      case 'open-library-object': {
+        const kind = button.dataset.kind;
+        if (kind === 'Branch') { ui.selectedBranchId = id; navigate('branches'); }
+        else if (kind === 'Component') { ui.selectedComponentId = id; ui.domainFilter = null; navigate('topology'); }
+        else if (kind === 'Decision') { ui.selectedDecisionId = id; navigate('decisions'); }
+        else if (kind === 'Branch Pattern') { ui.selectedPatternId = id; navigate('patterns'); }
+        else if (kind === 'Domain') { ui.domainFilter = id; navigate('topology'); }
+        else if (kind === 'Site') { ui.selectedSiteId = id; navigate('readiness'); }
+        else if (kind === 'Dependency') { ui.selectedComponentId = ui.data.dependencies.find(item => item.id === id)?.upstreamId; navigate('dependencies'); }
+        else if (kind === 'Device' || kind === 'Interface' || kind === 'Circuit') {
+          const device = kind === 'Interface' ? ui.data.devices.find(item => item.id === ui.data.interfaces.find(entry => entry.id === id)?.deviceId) : kind === 'Device' ? ui.data.devices.find(item => item.id === id) : null;
+          const branch = ui.data.branches.find(item => item.id === device?.branchId || (kind === 'Circuit' && item.siteId === ui.data.circuits.find(entry => entry.id === id)?.siteId));
+          if (branch) { ui.selectedBranchId = branch.id; navigate('branches'); }
+          else { ui.selectedSiteId = device?.siteId || ui.data.circuits.find(item => item.id === id)?.siteId; navigate('readiness'); }
+        } else navigate('overview');
+        break;
+      }
       case 'scenario-select-branch': ui.scenarioBranchId = id; render(); break;
       case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
       case 'open-trans-item':
@@ -448,8 +484,34 @@
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
+    if (event.target.id === 'library-search') {
+      ui.librarySearch = event.target.value;
+      const query = ui.librarySearch.toLowerCase();
+      document.querySelectorAll('#library-results [data-action="open-library-document"]').forEach(button => {
+        const item = ui.data.libraryDocuments.find(entry => entry.id === button.dataset.id);
+        button.hidden = !`${item.title} ${item.sourceLabel} ${item.note}`.toLowerCase().includes(query);
+      });
+    }
   });
   document.addEventListener('submit', event => {
+    if (event.target.matches('#library-upload-form')) {
+      event.preventDefault(); const files = [...event.target.elements.files.files], sourceLabel = String(new FormData(event.target).get('sourceLabel') || '');
+      run(async () => {
+        const result = C.library.addLocal(ui.data, files, sourceLabel);
+        await C.storage.saveDocumentsWithFiles(result.data, result.files);
+        ui.data = result.data; ui.selectedLibraryDocumentId = result.files[0].id;
+        status('Saved in this browser'); render(); toast(`${result.files.length} documents saved locally.`);
+      });
+    }
+    if (event.target.matches('#library-link-form')) {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(event.target));
+      run(async () => { const result = C.library.addExternal(ui.data, values); ui.selectedLibraryDocumentId = result.id; await persist(result.data, 'Secured document reference saved.'); });
+    }
+    if (event.target.matches('#library-association-form')) {
+      event.preventDefault(); const values = new FormData(event.target);
+      const [kind, id] = String(values.get('target') || '').split('|');
+      run(() => persist(C.library.link(ui.data, String(values.get('documentId')), kind, id, String(values.get('note') || '')), 'Document linked to architecture object.'));
+    }
     if (event.target.matches('#current-report-form')) {
       event.preventDefault(); const values = new FormData(event.target);
       run(async () => {
@@ -461,7 +523,7 @@
           ui.currentReportPreview = { ...C.currentReport.plan(ui.data, preview.parsed, options), reviewed: true };
           render(); toast('Import options reviewed. Check the row preview, then apply.'); return;
         }
-        if (preview.mode === 'new' && !window.confirm('Replace this browser workspace and its photographs with the reviewed Current State branch report? Export JSON first if you need the existing data.')) return;
+        if (preview.mode === 'new' && !window.confirm('Replace this browser workspace, local documents and photographs with the reviewed Current State branch report? Export JSON first if you need the existing data.')) return;
         const result = C.currentReport.apply(ui.data, preview);
         if (preview.mode === 'new') await C.storage.replaceWorkspace(result.data);
         else await C.storage.saveWorkspace(result.data);

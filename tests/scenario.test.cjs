@@ -7,13 +7,13 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, console });
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return context.window.Cockpit;
 }
 
 test('hypothetical pattern changes comparison without assigning it or modifying baselines', () => {
   const C = load(), data = C.demo.create();
-  assert.equal(C.model.migrateWorkspace(data).schemaVersion, 8);
+  assert.equal(C.model.migrateWorkspace(data).schemaVersion, 9);
   const before = JSON.stringify(data);
   const assigned = C.scenario.compare(data, 'branch-north');
   const proposed = C.scenario.compare(data, 'branch-north', 'pattern-compact');

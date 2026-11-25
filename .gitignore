@@ -29,6 +29,9 @@ work/
 *.tsv
 *.ppt
 *.pptx
+*.vsdx
+*.drawio
+*.zip
 *.odt
 *.ods
 *.jpg

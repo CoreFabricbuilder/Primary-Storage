@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, ArrayBuffer, atob, console });
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js']) {
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return { C: context.window.Cockpit, XLSX: context.window.XLSX };
@@ -171,7 +171,7 @@ test('planning status and architecture gate remain independent; backup preserves
   const legacy = C.model.copy(next); legacy.schemaVersion = 4;
   for (const name of ['transProgrammes', 'transProjects', 'transStreams', 'transActivities', 'transDependencies', 'transMilestones', 'transMappings', 'transGates', 'planImports', 'importChanges', 'dataQualityIssues']) delete legacy[name];
   const migrated = C.model.migrateWorkspace(legacy);
-  assert.equal(migrated.schemaVersion, 8);
+  assert.equal(migrated.schemaVersion, 9);
   assert.equal(migrated.transStreams.length, 0);
   assert.equal(migrated.merakiCandidates.length, next.merakiCandidates.length);
 });

@@ -73,7 +73,7 @@
     return { id: C.model.newId(), code, name: 'Unassigned (current report)', description: 'No target pattern has been selected.', intendedUse: 'Current State import only', expectations: Object.fromEntries(C.model.expectationKeys.map(key => [key, null])) };
   }
   function emptyWorkspace(name) {
-    const data = { id: 'active', schemaVersion: 8, programme: { id: 'programme-local', name: (name || '').trim() || 'Network Refresh', description: 'Local architecture workspace', isDemo: false } };
+    const data = { id: 'active', schemaVersion: 9, programme: { id: 'programme-local', name: (name || '').trim() || 'Network Refresh', description: 'Local architecture workspace', isDemo: false } };
     for (const key of C.model.collections) data[key] = [];
     data.domains = C.model.domainNames.map((domain, index) => ({ id: `domain-${index + 1}`, name: domain }));
     data.branchPatterns.push(unassignedPattern());

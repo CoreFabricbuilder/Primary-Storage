@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, ArrayBuffer, TextDecoder, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return context.window.Cockpit;
 }
 function csv(C, entries) {
@@ -77,7 +77,7 @@ test('schema 7 migration retains all previous data; report views escape supplied
   const C = load();
   const legacy = C.demo.create(); legacy.schemaVersion = 7; delete legacy.currentReportImports; delete legacy.currentBranchReports;
   const migrated = C.model.migrateWorkspace(legacy);
-  assert.equal(migrated.schemaVersion, 8);
+  assert.equal(migrated.schemaVersion, 9);
   assert.equal(migrated.serviceFlows.length, legacy.serviceFlows.length);
   const parsed = C.currentReport.parse(csv(C, [row('0123', '<img src=x onerror=alert(1)>')]), 'Location Branch Report 27-08-2026.csv');
   const data = C.currentReport.apply(migrated, C.currentReport.plan(migrated, parsed, { mode: 'merge' })).data;
