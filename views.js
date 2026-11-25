@@ -15,6 +15,7 @@
   const stateDependencies = (data, state) => data.dependencies.filter(item => item.state === 'All' || item.state === state);
 
   function overview(data, ui) {
+    if (data.currentBranchReports.length) return C.currentReportViews.overview(data, ui);
     const state = ui.state;
     const visible = M.visibleComponents(data, state);
     const rows = M.readinessFor(data, state);
@@ -45,6 +46,7 @@
   }
 
   function topology(data, ui) {
+    if (C.currentReportViews.useEstateTopology(data, ui)) return C.currentReportViews.estateTopology(data, ui);
     const visible = M.visibleComponents(data, ui.state, ui.domainFilter);
     const selected = visible.find(item => item.id === ui.selectedComponentId) || visible[0];
     const componentState = data.componentStates.find(item => item.componentId === selected?.id && item.state === ui.state);

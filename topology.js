@@ -7,6 +7,7 @@
     'Campus LAN': '#efc877', Security: '#ee938c', Internet: '#82aef9',
     AWS: '#d9a5f4', 'Shared Services': '#8cd1c9',
   };
+  const reportedPalette = { 'Reported estate': '#59c6d7', 'Reported region': '#e8c875', 'Reported primary access': '#b59af2', 'Reported branch': '#73d4a6' };
   const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
   function labelLines(name) {
     const words = name.split(/\s+/);
@@ -26,10 +27,10 @@
     svg.innerHTML = `<defs><pattern id="topology-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#51708a" opacity=".45"/></pattern><marker id="topology-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7e98ac"/></marker></defs><rect class="topology-background" x="-1000" y="-1000" width="4000" height="3000" fill="url(#topology-grid)"/>` +
       links.map(link => {
         const from = byId.get(link.fromId), to = byId.get(link.toId);
-        return `<line class="topology-edge${highlightedLinkIds.includes(link.id) ? ' highlighted' : ''}" data-link="${escape(link.id)}" x1="${from.x + 62}" y1="${from.y + 25}" x2="${to.x + 62}" y2="${to.y + 25}" marker-end="url(#topology-arrow)"><title>${escape(link.label)}</title></line>`;
+        return `<line class="topology-edge${link.kind === 'Report association' ? ' reported-association' : ''}${highlightedLinkIds.includes(link.id) ? ' highlighted' : ''}" data-link="${escape(link.id)}" x1="${from.x + 62}" y1="${from.y + 25}" x2="${to.x + 62}" y2="${to.y + 25}"${link.kind === 'Report association' ? '' : ' marker-end="url(#topology-arrow)"'}><title>${escape(link.label)}</title></line>`;
       }).join('') +
       components.map(item => {
-        const color = palette[domainById.get(item.domainId)] || '#a3b7c8';
+        const color = reportedPalette[item.type] || palette[domainById.get(item.domainId)] || '#a3b7c8';
         return `<g class="topology-node${item.id === selectedId ? ' selected' : ''}${affectedIds.includes(item.id) ? ' affected' : ''}" data-node="${escape(item.id)}" tabindex="0" role="button" aria-label="Select ${escape(item.name)}" transform="translate(${Number(item.x) || 0},${Number(item.y) || 0})"><rect width="124" height="50" rx="11" fill="#172d41" stroke="${color}" stroke-width="2"/><text x="62" y="${item.name.length > 17 ? 18 : 30}" text-anchor="middle" fill="#eef8fd">${labelLines(item.name)}</text></g>`;
       }).join('');
 
