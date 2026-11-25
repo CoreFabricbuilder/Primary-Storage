@@ -1,9 +1,7 @@
 # Project state
 
-Transformation Portfolio branch: `codex/phase-4-transformation-portfolio`, created from merged main `1ba2e28`. The application remains a direct-file browser app with IndexedDB and JSON backups. The browser has no network access, build, server, AI, telemetry or cloud storage.
+Phase 6 `codex/phase-6-sdwan-validation` starts from merged main `16a6cec`. The cockpit remains a zero-install direct-file browser app with IndexedDB and JSON backup. The browser has no network access, server, build, telemetry, cloud database or runtime AI.
 
-Implemented: schema 5 migration; locally bundled XLSX parser; two-sheet workbook projection with preserved source values; preview and explicit import confirmation; repeatable source reconciliation with change/removal history; quality warnings; architect-owned mappings and gates; synthetic portfolio data; and Overview, Timeline, Projects / TAs, Workstreams, Impact Matrix, Dependencies, Data Quality and architecture detail views. Existing Meraki and assurance functionality remains.
+Implemented: schema 6 migration; read-only Catalyst SD-WAN snapshot schema and optional Keychain-backed macOS collector; Branch/Campus site mapping; per-candidate observation review; versioned Design Intent targets; deterministic validation history for WAN Edge quantity, Site ID, System IP, reachability, colours, VPN IDs, TLOCs, BFD, control, OMP, service-side status, associations and alarms where available; and a combined Branch view covering SD-WAN, Meraki LAN/Wi-Fi, Physical, Routing and Management. Critical failures govern the overall state.
 
-Verification: 32 Node tests, JavaScript and Bash syntax checks, `git diff --check`, and Chromium smoke checks of timeline, local XLSX preview, confirmed import, gate and mapping edits, and topology highlighting. No production build exists. The actual source workbook was not supplied, so real header/date variations were not exercised. No customer workbook or credentials are in Git.
-
-Next: review and merge this PR before Phase 5 branches from updated main. Catalyst SD-WAN Manager integration and native packaging remain deferred.
+Verification: Node tests, JavaScript/Bash syntax checks and direct-file asset checks. No build step exists. Live Catalyst SD-WAN Manager access and macOS collector execution were unavailable here, so endpoint coverage and Keychain session behavior need validation on a representative Manager release. Only synthetic data is committed.

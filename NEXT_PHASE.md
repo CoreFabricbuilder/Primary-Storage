@@ -1,3 +1,3 @@
 # Next phase
 
-After Transformation Portfolio review and merge, branch `codex/phase-5-sdwan-integration` from updated main. Add a local read-only Catalyst SD-WAN Manager snapshot adapter following the Meraki pattern: credentials outside browser data, explicit branch mapping and per-candidate review before any Observed record is added. Preserve Design Intent, provenance, immutable runs and architect confirmation. Keep the core browser app usable from `index.html`; native packaging remains deferred.
+After this PR is reviewed and merged, validate the optional collector against the programme's supported Catalyst SD-WAN Manager release with a read-only account. Confirm endpoint field names, pagination and optional association coverage. Add release-specific mappings only when supported by observed responses. Keep credentials in Keychain and all runtime snapshots outside Git. Native macOS packaging remains deferred.

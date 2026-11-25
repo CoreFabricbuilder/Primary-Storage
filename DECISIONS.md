@@ -24,3 +24,6 @@
 - Source Planning Status, timeline markers and parsed dates do not set Architecture Gates. Architect-owned mappings, activity links and gates remain separate from source rows.
 - Transformation domain labels are a finer matrix taxonomy linked to existing architecture domains. Object mappings reference existing architecture IDs; HLD/LLD and validation requirements can use explicit references.
 - The bundled parser is `@e965/xlsx` 0.20.3 (Apache 2.0). No CDN or developer tooling is needed at runtime.
+- Phase 6 uses a separate SD-WAN validation history rather than changing the existing assurance rule catalogue, preserving historical run completeness and immutable results.
+- The optional Catalyst SD-WAN companion uses a Keychain-backed Manager session and fixed GET data routes. It projects allowlisted site facts to JSON outside Git; unsupported queries produce coverage flags and Unknown checks.
+- Branch and Campus mapping is explicit. Candidate Apply records Observed only; targets are separately versioned Design Intent. Critical mandatory failures block the combined Branch state regardless of other passing checks.

@@ -7,7 +7,7 @@ const vm = require('node:vm');
 
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'views.js']) {
+  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -16,7 +16,7 @@ function load() {
 test('synthetic catalogue covers all assurance categories and branch domains', () => {
   const C = load();
   const data = C.demo.create();
-  assert.equal(data.schemaVersion, 5);
+  assert.equal(data.schemaVersion, 6);
   for (const category of C.assurance.categories) assert.ok(data.assuranceRules.some(rule => rule.category === category), category);
   for (const domain of C.assurance.domains) assert.ok(data.assuranceRules.some(rule => rule.domain === domain), domain);
   for (const code of ['LAN-SW-COUNT', 'LAN-SW-MODEL', 'LAN-UPLINK-MODE', 'LAN-PORT-MODE', 'LAN-NATIVE-VLAN', 'LAN-ALLOWED-VLANS', 'LAN-POE', 'LAN-MGMT-CONFIG', 'WIFI-AP-COUNT', 'WIFI-AP-MODEL', 'WIFI-SSIDS', 'WIFI-VLAN-MAP', 'WIFI-RF-PROFILE', 'WIFI-MGMT-STATE', 'SDW-EDGE-COUNT', 'SDW-TRANSPORTS', 'SDW-VPNS', 'SDW-COLOURS', 'SDW-ROUTING', 'SDW-SERVICE-SIDE']) assert.ok(data.assuranceRules.some(rule => rule.code === code), code);
@@ -108,7 +108,7 @@ test('schema 2 JSON backup migrates assurance data without changing branch evide
   for (const key of ['assuranceRules', 'assuranceObservations', 'assuranceBaselines', 'assuranceRuns', 'assuranceResults', 'assuranceExceptions', 'acceptanceGates', 'acceptanceRecords']) delete old[key];
   const backup = { format: 'network-refresh-cockpit-backup', version: 1, workspace: old, photos: [] };
   const migrated = C.storage.parseBackup(JSON.stringify(backup));
-  assert.equal(migrated.workspace.schemaVersion, 5);
+  assert.equal(migrated.workspace.schemaVersion, 6);
   assert.equal(migrated.workspace.branchEvidence.length, evidenceCount);
   assert.equal(migrated.workspace.assuranceRules.length, 22);
   assert.equal(migrated.workspace.assuranceRuns.length, 0);

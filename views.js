@@ -251,5 +251,5 @@
       }).join('') || '<section class="panel empty-state"><p>No Meraki snapshots staged for this branch.</p></section>');
   }
   C.views = Object.freeze({ h, badge, overview, topology, readiness, decisions, dependencies, branches, estate, patterns,
-    deployment, deploymentReadiness, validation, exceptions, acceptance, baselines, meraki, ...C.transViews, sourceName });
+    deployment, deploymentReadiness, validation, exceptions, acceptance, baselines, meraki, ...C.transViews, ...C.sdwanViews, sourceName });
 })();
