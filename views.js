@@ -15,6 +15,7 @@
   const stateDependencies = (data, state) => data.dependencies.filter(item => item.state === 'All' || item.state === state);
 
   function overview(data, ui) {
+    if (data.currentBranchReports.length) return C.currentReportViews.overview(data, ui);
     const state = ui.state;
     const visible = M.visibleComponents(data, state);
     const rows = M.readinessFor(data, state);
