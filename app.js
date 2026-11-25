@@ -5,6 +5,7 @@
   const ui = {
     data: null, screen: 'overview', state: 'Current', domainFilter: null,
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
+    estateRegion: null, estatePage: 0, estateNodeId: null,
     selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
     merakiBranchId: null, pendingMerakiSnapshot: null,
     sdwanScope: null, pendingSdwanSnapshot: null, combinedBranchId: null,
@@ -56,7 +57,15 @@
     });
     el('content').innerHTML = C.views[ui.screen](data, ui);
     if (ui.screen === 'topology') {
-      ui.topologyController = C.topology.mount(el('topology-svg'), data, ui.state, ui.domainFilter, ui.selectedComponentId, id => {
+      if (C.currentReportViews.useEstateTopology(data, ui)) {
+        const graph = C.currentReport.estateGraph(data, ui.estateRegion, ui.estatePage);
+        ui.topologyController = C.topology.mount(el('topology-svg'), graph, 'Current', null, ui.estateNodeId, id => {
+          const region = graph.regions.find(item => item.id === id);
+          if (region) { ui.estateRegion = region.label; ui.estatePage = 0; ui.estateNodeId = null; ui.camera = null; }
+          else { ui.estateNodeId = id; ui.camera = ui.topologyController.getCamera(); }
+          render();
+        }, ui.camera);
+      } else ui.topologyController = C.topology.mount(el('topology-svg'), data, ui.state, ui.domainFilter, ui.selectedComponentId, id => {
         ui.camera = ui.topologyController.getCamera();
         ui.selectedComponentId = id;
         render();
@@ -139,6 +148,7 @@
     ui.data = backup.workspace;
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
     ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
+    ui.estateRegion = null; ui.estatePage = 0; ui.estateNodeId = null;
     ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
     ui.sdwanScope = null; ui.pendingSdwanSnapshot = null; ui.combinedBranchId = null;
     ui.flowId = null; ui.segmentKind = 'All'; ui.segmentQuery = ''; ui.segmentSelection = null; ui.segmentTargetKind = 'Site'; ui.impactComponentId = null;
@@ -255,6 +265,8 @@
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
+      case 'estate-previous-page': ui.estatePage = Math.max(0, ui.estatePage - 1); ui.estateNodeId = null; ui.camera = null; render(); break;
+      case 'estate-next-page': ui.estatePage++; ui.estateNodeId = null; ui.camera = null; render(); break;
       case 'scenario-select-branch': ui.scenarioBranchId = id; render(); break;
       case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
       case 'open-trans-item':
@@ -385,6 +397,7 @@
   document.addEventListener('change', event => {
     const target = event.target;
     if (target.id === 'domain-filter') { ui.domainFilter = target.value || null; ui.selectedComponentId = null; ui.camera = null; render(); }
+    if (target.id === 'estate-region') { ui.estateRegion = target.value || null; ui.estatePage = 0; ui.estateNodeId = null; ui.camera = null; render(); }
     if (target.id === 'readiness-site') { ui.selectedSiteId = target.value; render(); }
     if (target.id === 'dependency-component') { ui.selectedComponentId = target.value; render(); }
     if (target.id === 'import-file') { const file = target.files[0]; target.value = ''; run(() => importBackup(file)); }

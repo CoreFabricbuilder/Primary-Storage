@@ -86,6 +86,39 @@ test('overview turns the imported estate into sourced Current insight and explic
   assert.doesNotMatch(escaped, /<img src=x/);
 });
 
+test('topology shows report groupings without inventing network paths', () => {
+  const C = load();
+  const rows = Array.from({ length: 20 }, (_, index) => row(String(index + 1).padStart(4, '0'), `Example Branch ${index + 1}`, {
+    Region: index === 19 ? 'Example South' : 'Example North',
+    'Primary Connectivity Type': index % 2 ? 'Wireless' : 'Fibre',
+  }));
+  const parsed = C.currentReport.parse(csv(C, rows), 'Synthetic Branch Report 27-08-2026.csv');
+  const demo = C.demo.create();
+  const data = C.currentReport.apply(demo, C.currentReport.plan(demo, parsed, { mode: 'new' })).data;
+  const all = C.currentReport.estateGraph(data);
+  assert.equal(all.regions.length, 2);
+  assert.equal(all.topologyLinks.length, 2);
+  assert.ok(all.topologyLinks.every(item => item.kind === 'Report association'));
+  assert.ok(all.topologyLinks.every(item => item.label.includes('not a network connection')));
+  const region = C.currentReport.estateGraph(data, 'Example North');
+  assert.equal(region.pageCount, 2);
+  assert.equal(region.visibleRecords.length, 18);
+  assert.ok(region.components.some(item => item.type === 'Reported primary access'));
+  assert.ok(region.topologyLinks.every(item => item.label.includes('not a circuit or network path')));
+  const second = C.currentReport.estateGraph(data, 'Example North', 1);
+  assert.equal(second.visibleRecords.length, 1);
+  const branchDomain = data.domains.find(item => item.name === 'Branch');
+  assert.equal(C.currentReportViews.useEstateTopology(data, { state: 'Current', domainFilter: branchDomain.id }), true);
+  const html = C.views.topology(data, { state: 'Current', domainFilter: branchDomain.id, estateRegion: 'Example North', estatePage: 0 });
+  assert.match(html, /Branch estate map/);
+  assert.match(html, /grouping links only/);
+  assert.doesNotMatch(html, /No components are modelled for this domain/);
+  const otherDomain = data.domains.find(item => item.name === 'Teraco Core');
+  assert.match(C.views.topology(data, { state: 'Future', domainFilter: otherDomain.id }), /topology not modelled/);
+  assert.equal(data.components.length, 0);
+  assert.equal(data.topologyLinks.length, 0);
+});
+
 test('merge matches UID, keeps design and As-Built data, and is idempotent', () => {
   const C = load();
   const demo = C.demo.create();

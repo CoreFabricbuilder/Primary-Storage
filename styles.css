@@ -152,3 +152,12 @@
 .estate-quantity span{font-size:.72rem;color:#aac6d4}
 .estate-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
 @media(max-width:550px){.estate-bar-row{grid-template-columns:80px 1fr 35px}.estate-quantity{grid-template-columns:1fr}}
+.estate-topology-note{padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-color:#426a73;background:#193848}
+.estate-topology-note p{margin:0;font-size:.76rem;line-height:1.5}
+.estate-topology-note strong{color:#a9e1ea}
+.estate-topology-toolbar{flex-wrap:wrap}
+.estate-topology-toolbar label{display:flex;align-items:center;gap:8px}
+.estate-topology-toolbar select{max-width:230px}
+.topology-edge.reported-association{stroke:#7892a7;stroke-dasharray:6 6;opacity:.65}
+.estate-graph-pages{display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 0;font-size:.72rem;color:#a8c3d1}
+@media(max-width:760px){.estate-topology-note{display:block}.estate-topology-note button{margin-top:10px}}

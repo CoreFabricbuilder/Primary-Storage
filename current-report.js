@@ -118,6 +118,39 @@
       modelledSites: new Set(data.components.map(item => item.siteId).filter(id => branchSites.has(id))).size,
     };
   }
+  function estateGraph(data, regionName = null, requestedPage = 0) {
+    const summary = estateSummary(data);
+    const regions = summary.regions.map((item, index) => ({ ...item, id: `estate-region-${index}` }));
+    const branchDomainId = data.domains.find(item => item.name === 'Branch')?.id || 'estate-branch-domain';
+    const components = [], componentStates = [], topologyLinks = [];
+    const addNode = (id, name, type, x, y) => {
+      components.push({ id, name, type, domainId: branchDomainId, siteId: null, description: 'Reported Current State grouping', x, y });
+      componentStates.push({ id: `state-${id}`, componentId: id, state: 'Current', perspective: 'Observed', classification: 'Observed', sourceId: null });
+    };
+    const addLink = (fromId, toId, label) => topologyLinks.push({ id: `relation-${topologyLinks.length}`, kind: 'Report association', fromId, toId, state: 'Current', label, classification: 'Observed', sourceId: null });
+    const selectedRegion = regions.find(item => item.label === regionName) || null;
+    const records = selectedRegion ? summary.records.filter(item => (item.report.fields.Region?.trim() || 'Unknown') === selectedRegion.label) : summary.records;
+    const pageCount = selectedRegion ? Math.max(1, Math.ceil(records.length / 18)) : 1;
+    const page = Math.max(0, Math.min(pageCount - 1, Number.isInteger(requestedPage) ? requestedPage : 0));
+    const visibleRecords = selectedRegion ? records.slice(page * 18, (page + 1) * 18) : [];
+    if (!selectedRegion) {
+      addNode('estate-root', `Branch estate (${summary.records.length})`, 'Reported estate', 25, 280);
+      regions.forEach((item, index) => {
+        addNode(item.id, `${item.label} (${item.count})`, 'Reported region', 390 + (index % 2) * 400, 25 + Math.floor(index / 2) * 105);
+        addLink('estate-root', item.id, 'Reported region membership; not a network connection');
+      });
+    } else {
+      const accessTypes = [...new Set(visibleRecords.map(item => item.report.fields['Primary Connectivity Type']?.trim() || 'Unknown'))].sort();
+      accessTypes.forEach((type, index) => addNode(`estate-access-${index}`, type, 'Reported primary access', 25, 55 + index * 105));
+      visibleRecords.forEach((item, index) => {
+        const id = `estate-branch-${item.branch.id}`;
+        addNode(id, item.branch.name, 'Reported branch', 280 + (index % 3) * 290, 25 + Math.floor(index / 3) * 100);
+        const type = item.report.fields['Primary Connectivity Type']?.trim() || 'Unknown';
+        addLink(`estate-access-${accessTypes.indexOf(type)}`, id, 'Reported primary access type; not a circuit or network path');
+      });
+    }
+    return { domains: [{ id: branchDomainId, name: 'Branch' }], components, componentStates, topologyLinks, regions, selectedRegion, records, visibleRecords, page, pageCount };
+  }
   function match(data, row) {
     const uidMatches = data.branches.filter(branch => branch.siteCode === row.uid);
     if (uidMatches.length > 1) throw new Error('More than one existing branch has the same Location UID. Resolve this before import.');
@@ -188,5 +221,5 @@
       const key = `${item.importId}:${item.uid}`; if (pairs.has(key)) throw new Error('Duplicate current branch report row.'); pairs.add(key);
     }
   }
-  C.currentReport = Object.freeze({ FIELDS, MAX_BYTES, decode, parse, plan, apply, validate, latest, estateSummary, emptyWorkspace, warnings });
+  C.currentReport = Object.freeze({ FIELDS, MAX_BYTES, decode, parse, plan, apply, validate, latest, estateSummary, estateGraph, emptyWorkspace, warnings });
 })();

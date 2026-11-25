@@ -46,6 +46,7 @@
   }
 
   function topology(data, ui) {
+    if (C.currentReportViews.useEstateTopology(data, ui)) return C.currentReportViews.estateTopology(data, ui);
     const visible = M.visibleComponents(data, ui.state, ui.domainFilter);
     const selected = visible.find(item => item.id === ui.selectedComponentId) || visible[0];
     const componentState = data.componentStates.find(item => item.componentId === selected?.id && item.state === ui.state);
