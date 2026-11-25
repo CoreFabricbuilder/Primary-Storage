@@ -165,11 +165,12 @@
   ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
     ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 5, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 6, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
     assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
     merakiBatches: [], merakiCandidates: [],
+    sdwanBatches: [], sdwanCandidates: [], sdwanObservations: [], sdwanTargets: [], sdwanRuns: [], sdwanResults: [],
     transProgrammes: [], transProjects: [], transStreams: [], transActivities: [], transDependencies: [], transMilestones: [], transMappings: [], transGates: [], planImports: [], importChanges: [], dataQualityIssues: [],
   };
   const syntheticMerakiSnapshot = {

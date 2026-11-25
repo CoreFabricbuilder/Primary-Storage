@@ -7,6 +7,7 @@
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
     selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
     merakiBranchId: null, pendingMerakiSnapshot: null,
+    sdwanScope: null, pendingSdwanSnapshot: null, combinedBranchId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
@@ -129,6 +130,7 @@
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
     ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
     ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
+    ui.sdwanScope = null; ui.pendingSdwanSnapshot = null; ui.combinedBranchId = null;
     ui.transPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
@@ -275,6 +277,12 @@
       }
       case 'apply-meraki': await persist(C.meraki.applyCandidate(ui.data, id), 'Meraki candidate recorded as Observed. Run validation separately.'); break;
       case 'dismiss-meraki': await persist(C.meraki.dismissCandidate(ui.data, id), 'Meraki candidate dismissed.'); break;
+      case 'apply-sdwan': await persist(C.sdwan.applyCandidate(ui.data, id), 'SD-WAN candidate recorded as Observed.'); break;
+      case 'dismiss-sdwan': await persist(C.sdwan.dismissCandidate(ui.data, id), 'SD-WAN candidate dismissed.'); break;
+      case 'run-sdwan': {
+        const [kind, scopeId] = (ui.sdwanScope || `Branch|${ui.data.branches[0]?.id}`).split('|');
+        await persist(C.sdwan.runValidation(ui.data, kind, scopeId).data, 'SD-WAN validation recorded.'); break;
+      }
       case 'new-branch': ui.newBranch = true; navigate('branches'); break;
       case 'cancel-new-branch': ui.newBranch = false; render(); break;
       case 'select-pattern': ui.selectedPatternId = id; render(); break;
@@ -369,6 +377,17 @@
     if (target.id === 'evidence-type') updateEvidenceInput();
     if (target.id === 'assurance-branch') { ui.assuranceBranchId = target.value; ui.selectedRunId = null; ui.selectedBaselineId = null; render(); }
     if (target.id === 'meraki-branch') { ui.merakiBranchId = target.value; render(); }
+    if (target.id === 'sdwan-scope') { ui.sdwanScope = target.value; render(); }
+    if (target.id === 'combined-branch') { ui.combinedBranchId = target.value; render(); }
+    if (target.id === 'sdwan-file') {
+      const file = target.files[0]; target.value = '';
+      if (file) run(async () => {
+        ui.pendingSdwanSnapshot = null;
+        if (file.size > C.sdwan.MAX_SNAPSHOT_BYTES) throw new Error('SD-WAN snapshot exceeds 30 MB.');
+        ui.pendingSdwanSnapshot = C.sdwan.parseSnapshot(await file.text());
+        render(); toast('SD-WAN snapshot loaded for review.');
+      });
+    }
     if (target.id === 'meraki-file') {
       const file = target.files[0]; target.value = '';
       if (file) run(async () => {
@@ -415,6 +434,22 @@
         ui.pendingMerakiSnapshot = null; ui.merakiBranchId = branchId;
         await persist(result.data, `${result.count} Meraki candidates staged for review.`);
       });
+    }
+    if (event.target.matches('#sdwan-stage-form')) {
+      event.preventDefault();
+      const [kind, scopeId] = String(new FormData(event.target).get('scope') || '').split('|');
+      run(async () => {
+        if (!ui.pendingSdwanSnapshot) throw new Error('Select a snapshot first.');
+        const result = C.sdwan.stageSnapshot(ui.data, ui.pendingSdwanSnapshot, kind, scopeId);
+        ui.pendingSdwanSnapshot = null; ui.sdwanScope = `${kind}|${scopeId}`;
+        await persist(result.data, `${result.count} SD-WAN candidates staged for review.`);
+      });
+    }
+    if (event.target.matches('#sdwan-target-form')) {
+      event.preventDefault();
+      const [kind, scopeId] = (ui.sdwanScope || `Branch|${ui.data.branches[0]?.id}`).split('|');
+      const values = Object.fromEntries(new FormData(event.target));
+      run(() => persist(C.sdwan.saveTarget(ui.data, kind, scopeId, values, String(values.source || '')), 'SD-WAN target version saved.'));
     }
     if (event.target.matches('#trans-gate-form')) { event.preventDefault(); run(() => saveTransGate(event.target)); }
     if (event.target.matches('#trans-map-form')) { event.preventDefault(); run(() => saveTransMapping(event.target)); }
