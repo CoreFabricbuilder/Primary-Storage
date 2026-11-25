@@ -17,7 +17,7 @@
   const validationStatuses = Object.freeze(['Unknown', 'Not Started', 'Pending Architect Review', 'Architect Confirmed', 'As-Built']);
   const evidenceTypes = Object.freeze(['Photograph', 'Document reference', 'Workshop note', 'Configuration reference', 'Spreadsheet reference', 'Manual observation']);
   const evidenceObjectKinds = Object.freeze(['Branch', 'Cabinet', 'Device', 'Interface', 'Circuit', 'Wireless AP', 'Switch']);
-  const collections = Object.freeze(['domains', 'sites', 'branchPatterns', 'branches', 'branchAttributes', 'branchEvidence', 'devices', 'interfaces', 'circuits', 'vlans', 'vrfs', 'sdwanVpns', 'subnets', 'routingAdjacencies', 'services', 'components', 'componentStates', 'topologyLinks', 'lldReadiness', 'decisions', 'dependencies', 'sources', 'facts', 'evidence', 'validationRules', 'validationResults', 'assuranceRules', 'assuranceObservations', 'assuranceBaselines', 'assuranceRuns', 'assuranceResults', 'assuranceExceptions', 'acceptanceGates', 'acceptanceRecords', 'merakiBatches', 'merakiCandidates', 'transProgrammes', 'transProjects', 'transStreams', 'transActivities', 'transDependencies', 'transMilestones', 'transMappings', 'transGates', 'planImports', 'importChanges', 'dataQualityIssues', 'sdwanBatches', 'sdwanCandidates', 'sdwanObservations', 'sdwanTargets', 'sdwanRuns', 'sdwanResults', 'serviceFlows', 'segmentationLinks', 'deploymentBaselines', 'driftReviews', 'currentReportImports', 'currentBranchReports']);
+  const collections = Object.freeze(['domains', 'sites', 'branchPatterns', 'branches', 'branchAttributes', 'branchEvidence', 'devices', 'interfaces', 'circuits', 'vlans', 'vrfs', 'sdwanVpns', 'subnets', 'routingAdjacencies', 'services', 'components', 'componentStates', 'topologyLinks', 'lldReadiness', 'decisions', 'dependencies', 'sources', 'facts', 'evidence', 'validationRules', 'validationResults', 'assuranceRules', 'assuranceObservations', 'assuranceBaselines', 'assuranceRuns', 'assuranceResults', 'assuranceExceptions', 'acceptanceGates', 'acceptanceRecords', 'merakiBatches', 'merakiCandidates', 'transProgrammes', 'transProjects', 'transStreams', 'transActivities', 'transDependencies', 'transMilestones', 'transMappings', 'transGates', 'planImports', 'importChanges', 'dataQualityIssues', 'sdwanBatches', 'sdwanCandidates', 'sdwanObservations', 'sdwanTargets', 'sdwanRuns', 'sdwanResults', 'serviceFlows', 'segmentationLinks', 'deploymentBaselines', 'driftReviews', 'currentReportImports', 'currentBranchReports', 'libraryDocuments', 'documentLinks']);
   const idPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/;
 
   function fail(message) { throw new Error(message); }
@@ -36,7 +36,7 @@
     if (!ids.has(value)) fail(`Missing ${field} reference.`);
   }
   function validateWorkspace(data) {
-    if (!data || typeof data !== 'object' || Array.isArray(data) || data.schemaVersion !== 8 || data.id !== 'active') fail('Unsupported cockpit workspace schema.');
+    if (!data || typeof data !== 'object' || Array.isArray(data) || data.schemaVersion !== 9 || data.id !== 'active') fail('Unsupported cockpit workspace schema.');
     if (!data.programme || typeof data.programme !== 'object') fail('Missing programme.');
     requireId(data.programme.id, 'programme ID');
     requireText(data.programme.name, 'programme name', 200);
@@ -248,6 +248,8 @@
     if (!C.intelligence) fail('Architecture intelligence model is unavailable.');
     C.intelligence.validate(data);
     if (!C.currentReport) fail('Current branch report model is unavailable.');
+    if (!C.library) fail('Document library model is unavailable.');
+    C.library.validate(data, sets);
     C.currentReport.validate(data);
     return data;
   }
@@ -295,8 +297,8 @@
     return validateWorkspace(next);
   }
   function migrateWorkspace(data, legacyPhotos = []) {
-    if (data?.schemaVersion === 8) return validateWorkspace(data);
-    if (!data || ![1, 2, 3, 4, 5, 6, 7].includes(data.schemaVersion) || !Array.isArray(data.branches) || !Array.isArray(data.branchPatterns)) fail('Unsupported cockpit workspace schema.');
+    if (data?.schemaVersion === 9) return validateWorkspace(data);
+    if (!data || ![1, 2, 3, 4, 5, 6, 7, 8].includes(data.schemaVersion) || !Array.isArray(data.branches) || !Array.isArray(data.branchPatterns)) fail('Unsupported cockpit workspace schema.');
     const next = copy(data);
     if (next.schemaVersion === 1) {
       next.schemaVersion = 2;
@@ -357,9 +359,14 @@
       next.schemaVersion = 7;
       for (const name of ['serviceFlows', 'segmentationLinks', 'deploymentBaselines', 'driftReviews']) next[name] = [];
     }
-    next.schemaVersion = 8;
-    next.currentReportImports = [];
-    next.currentBranchReports = [];
+    if (next.schemaVersion < 8) {
+      next.schemaVersion = 8;
+      next.currentReportImports = [];
+      next.currentBranchReports = [];
+    }
+    next.schemaVersion = 9;
+    next.libraryDocuments = [];
+    next.documentLinks = [];
     return validateWorkspace(next);
   }
   function updateBranch(data, branchId, fields) {

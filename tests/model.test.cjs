@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js']) {
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -65,7 +65,7 @@ test('JSON backup parser validates photo association and keeps photo as Observed
   assert.equal(parsed.photos[0].blob.type, 'image/png');
   assert.equal(parsed.photos[0].classification, 'Observed');
   assert.throws(() => C.storage.parseBackup(JSON.stringify({ ...backup, photos: [{ ...photo, deviceId: 'device-south-ap' }] })), /selected branch/);
-  assert.throws(() => C.storage.parseBackup(JSON.stringify({ ...backup, version: 2 })), /Unsupported/);
+  assert.throws(() => C.storage.parseBackup(JSON.stringify({ ...backup, version: 3 })), /Unsupported/);
 });
 
 test('view renderers escape imported text', () => {
@@ -80,7 +80,7 @@ test('view renderers escape imported text', () => {
 test('file-open entrypoint has only locally bundled assets and no module loader', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const assets = [...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(assets, ['styles.css', 'model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'topology.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js', 'app.js']);
+  assert.deepEqual(assets, ['styles.css', 'model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'topology.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js', 'app.js']);
   for (const asset of assets) assert.ok(fs.existsSync(path.join(root, asset)), `${asset} exists`);
   assert.ok(!html.includes('type="module"'));
   assert.match(html, /connect-src 'none'/);

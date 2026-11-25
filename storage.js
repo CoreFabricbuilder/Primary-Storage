@@ -10,7 +10,7 @@
   function open() {
     if (!window.indexedDB) return Promise.reject(new Error('IndexedDB is unavailable in this browser or for this local file. Try a current macOS browser with local storage enabled.'));
     if (!dbPromise) dbPromise = new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, 1);
+      const request = indexedDB.open(DB_NAME, 2);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains('workspaces')) db.createObjectStore('workspaces', { keyPath: 'id' });
@@ -18,6 +18,7 @@
           const photos = db.createObjectStore('photos', { keyPath: 'id' });
           photos.createIndex('branchId', 'branchId', { unique: false });
         }
+        if (!db.objectStoreNames.contains('documents')) db.createObjectStore('documents', { keyPath: 'id' });
       };
       request.onsuccess = () => {
         const db = request.result;
@@ -52,8 +53,8 @@
     const db = await open();
     const value = await readRequest(db.transaction('workspaces').objectStore('workspaces').get('active'));
     if (!value) return null;
-    if (Number.isInteger(value.schemaVersion) && value.schemaVersion > 8) throw new Error(`This app supports workspace schema 8, but this browser contains schema ${value.schemaVersion}. Open a newer app copy. Your stored data has not been changed.`);
-    if (value.schemaVersion === 8) return C.model.validateWorkspace(value);
+    if (Number.isInteger(value.schemaVersion) && value.schemaVersion > 9) throw new Error(`This app supports workspace schema 9, but this browser contains schema ${value.schemaVersion}. Open a newer app copy. Your stored data has not been changed.`);
+    if (value.schemaVersion === 9) return C.model.validateWorkspace(value);
     const workspace = C.model.migrateWorkspace(value, await getPhotos());
     await saveWorkspace(workspace);
     return workspace;
@@ -64,9 +65,10 @@
   }
   async function replaceWorkspace(workspace) {
     C.model.validateWorkspace(workspace);
-    await write(['workspaces', 'photos'], tx => {
+    await write(['workspaces', 'photos', 'documents'], tx => {
       tx.objectStore('workspaces').clear();
       tx.objectStore('photos').clear();
+      tx.objectStore('documents').clear();
       tx.objectStore('workspaces').put(workspace);
     });
   }
@@ -74,6 +76,32 @@
     const db = await open();
     const store = db.transaction('photos').objectStore('photos');
     return readRequest(branchId ? store.index('branchId').getAll(branchId) : store.getAll());
+  }
+  async function getDocuments() {
+    const db = await open();
+    return readRequest(db.transaction('documents').objectStore('documents').getAll());
+  }
+  async function getDocument(id) {
+    const db = await open();
+    return readRequest(db.transaction('documents').objectStore('documents').get(id));
+  }
+  async function saveDocumentsWithFiles(workspace, files) {
+    C.model.validateWorkspace(workspace);
+    for (const file of files) {
+      const item = workspace.libraryDocuments.find(entry => entry.id === file.id && entry.storage === 'Local');
+      if (!item || !(file.blob instanceof Blob) || file.blob.size !== item.size || file.name !== item.fileName || file.type !== item.mimeType) throw new Error('Document file and metadata do not match.');
+    }
+    await write(['workspaces', 'documents'], tx => {
+      tx.objectStore('workspaces').put(workspace);
+      files.forEach(file => tx.objectStore('documents').put(file));
+    });
+  }
+  async function removeDocumentWithFile(workspace, id) {
+    C.model.validateWorkspace(workspace);
+    await write(['workspaces', 'documents'], tx => {
+      tx.objectStore('workspaces').put(workspace);
+      tx.objectStore('documents').delete(id);
+    });
   }
   function validatePhoto(photo, workspace) {
     if (!photo || typeof photo !== 'object' || typeof photo.id !== 'string' || !/^[A-Za-z0-9._:-]{1,80}$/.test(photo.id)) throw new Error('Invalid photo ID.');
@@ -145,20 +173,29 @@
     for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
     return new Blob([bytes], { type: match[1] });
   }
-  async function makeBackup(workspace, storedPhotos) {
+  async function makeBackup(workspace, storedPhotos, storedDocuments = []) {
     C.model.validateWorkspace(workspace);
     validatePhotoLinks(workspace, storedPhotos);
     const photos = await Promise.all(storedPhotos.map(async photo => {
       const { blob, ...metadata } = photo;
       return { ...metadata, dataUrl: await blobToDataUrl(blob) };
     }));
-    return { format: 'network-refresh-cockpit-backup', version: 1, exportedAt: new Date().toISOString(), workspace: C.model.copy(workspace), photos };
+    const documentIds = new Set();
+    const documents = await Promise.all(storedDocuments.map(async file => {
+      const item = workspace.libraryDocuments.find(entry => entry.id === file.id && entry.storage === 'Local');
+      if (!item || documentIds.has(file.id) || !(file.blob instanceof Blob) || file.blob.size !== item.size || file.name !== item.fileName || file.type !== item.mimeType) throw new Error('A local document is inconsistent with the library.');
+      documentIds.add(file.id);
+      const { blob, ...metadata } = file;
+      return { ...metadata, dataUrl: await blobToDataUrl(blob) };
+    }));
+    if (workspace.libraryDocuments.some(item => item.storage === 'Local' && !documentIds.has(item.id))) throw new Error('A local document is missing from browser storage.');
+    return { format: 'network-refresh-cockpit-backup', version: 2, exportedAt: new Date().toISOString(), workspace: C.model.copy(workspace), photos, documents };
   }
-  async function createBackup(workspace) { return makeBackup(workspace, await getPhotos()); }
+  async function createBackup(workspace) { return makeBackup(workspace, await getPhotos(), await getDocuments()); }
   function parseBackup(text) {
     let backup;
     try { backup = JSON.parse(text); } catch { throw new Error('The selected file is not valid JSON.'); }
-    if (!backup || backup.format !== 'network-refresh-cockpit-backup' || backup.version !== 1 || !Array.isArray(backup.photos) || backup.photos.length > 2000) throw new Error('Unsupported cockpit backup format.');
+    if (!backup || backup.format !== 'network-refresh-cockpit-backup' || ![1, 2].includes(backup.version) || !Array.isArray(backup.photos) || backup.photos.length > 2000 || (backup.version === 2 && (!Array.isArray(backup.documents) || backup.documents.length > 1000))) throw new Error('Unsupported cockpit backup format.');
     const workspace = C.model.migrateWorkspace(backup.workspace, backup.photos);
     const photoIds = new Set();
     const photos = backup.photos.map(item => {
@@ -170,18 +207,34 @@
       return validatePhoto(photo, workspace);
     });
     validatePhotoLinks(workspace, photos);
-    return { workspace, photos };
+    const documentIds = new Set();
+    const documents = (backup.documents || []).map(item => {
+      const record = workspace.libraryDocuments.find(entry => entry.id === item.id && entry.storage === 'Local');
+      if (!record || documentIds.has(item.id) || typeof item.dataUrl !== 'string') throw new Error('Invalid local document in backup.');
+      documentIds.add(item.id);
+      const match = /^data:([^;,]+);base64,([A-Za-z0-9+/]+={0,2})$/.exec(item.dataUrl);
+      if (!match || match[1] !== record.mimeType || match[2].length > Math.ceil(C.library.MAX_FILE_BYTES * 4 / 3) + 4) throw new Error('Invalid document data in backup.');
+      const binary = atob(match[2]);
+      if (binary.length !== record.size) throw new Error('Document size mismatch in backup.');
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+      return { id: item.id, name: record.fileName, type: record.mimeType, size: record.size, blob: new Blob([bytes], { type: record.mimeType }) };
+    });
+    if (workspace.libraryDocuments.some(item => item.storage === 'Local' && !documentIds.has(item.id))) throw new Error('Backup is missing a local document.');
+    return { workspace, photos, documents };
   }
   async function restoreBackup(backup) {
     const workspace = C.model.validateWorkspace(backup.workspace);
     validatePhotoLinks(workspace, backup.photos);
-    await write(['workspaces', 'photos'], tx => {
+    await write(['workspaces', 'photos', 'documents'], tx => {
       const workspaces = tx.objectStore('workspaces');
       const photos = tx.objectStore('photos');
-      workspaces.clear(); photos.clear();
+      const documents = tx.objectStore('documents');
+      workspaces.clear(); photos.clear(); documents.clear();
       workspaces.put(workspace);
       backup.photos.forEach(photo => photos.put(photo));
+      (backup.documents || []).forEach(file => documents.put(file));
     });
   }
-  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, replaceWorkspace, getPhotos, addPhoto, addPhotos, removePhoto, saveEvidenceWithPhotos, removeEvidenceWithPhoto, makeBackup, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
+  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, replaceWorkspace, getPhotos, getDocument, getDocuments, saveDocumentsWithFiles, removeDocumentWithFile, addPhoto, addPhotos, removePhoto, saveEvidenceWithPhotos, removeEvidenceWithPhoto, makeBackup, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
 })();
