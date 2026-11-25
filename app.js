@@ -7,6 +7,7 @@
     selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null,
     selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
     merakiBranchId: null, pendingMerakiSnapshot: null,
+    transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
@@ -54,7 +55,7 @@
         ui.camera = ui.topologyController.getCamera();
         ui.selectedComponentId = id;
         render();
-      }, ui.camera);
+      }, ui.camera, ui.transHighlightIds);
     } else ui.topologyController = null;
     if (ui.screen === 'branches') { showPhotos(token).catch(failure); updateEvidenceInput(); }
     if (ui.screen === 'decisions' && ui.decisionSearch) filterDecisions();
@@ -128,6 +129,7 @@
     ui.screen = 'overview'; ui.state = 'Current'; ui.domainFilter = null; ui.camera = null;
     ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
     ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
+    ui.transPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
   async function saveBranchSummary(form) {
@@ -221,15 +223,56 @@
     const next = C.assurance.recordAcceptance(ui.data, String(values.get('runId') || ''), String(values.get('architect') || ''), String(values.get('notes') || ''));
     await persist(next, 'Architect acceptance recorded.');
   }
+  async function saveTransGate(form) {
+    const values = new FormData(form);
+    await persist(C.transformation.setGate(ui.data, String(values.get('kind')), String(values.get('id')), String(values.get('gate')), String(values.get('note') || '')), 'Architecture gate saved.');
+  }
+  async function saveTransMapping(form) {
+    const values = new FormData(form);
+    const [kind, targetId] = String(values.get('target') || '').split(':');
+    await persist(C.transformation.addMapping(ui.data, String(values.get('kind')), String(values.get('id')), kind, targetId || null, String(values.get('reference') || '')), 'Architecture mapping saved.');
+  }
   async function action(button) {
     const id = button.dataset.id;
     switch (button.dataset.action) {
-      case 'open-domain': ui.domainFilter = id; ui.selectedComponentId = null; navigate('topology'); break;
+      case 'open-domain': ui.domainFilter = id; ui.selectedComponentId = null; ui.transHighlightIds = []; navigate('topology'); break;
       case 'open-decision': case 'select-decision': ui.selectedDecisionId = id; navigate('decisions'); break;
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
       case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
+      case 'open-trans-item':
+        if (!id || !['Stream', 'Activity'].includes(button.dataset.kind)) break;
+        ui.transKind = button.dataset.kind; ui.transItemId = id;
+        if (ui.transKind === 'Stream') ui.transStreamId = id;
+        navigate('transDetail'); break;
+      case 'show-trans-topology': {
+        ui.transHighlightIds = ui.data.transMappings.filter(item => item.ownerKind === 'Stream' && item.ownerId === id && item.targetKind === 'Component').map(item => item.targetId);
+        if (!ui.transHighlightIds.length) throw new Error('Map a topology component to this stream first.');
+        ui.selectedComponentId = ui.transHighlightIds[0]; ui.domainFilter = null; navigate('topology'); break;
+      }
+      case 'apply-trans-import': {
+        if (!ui.transPreview) throw new Error('Select a workbook to preview first.');
+        const next = C.transformation.applyImport(ui.data, ui.transPreview);
+        ui.transPreview = null; await persist(next, 'Transformation plan imported after review.'); break;
+      }
+      case 'cancel-trans-import': ui.transPreview = null; render(); break;
+      case 'remove-trans-map': await persist(C.transformation.removeMapping(ui.data, id), 'Architecture mapping removed.'); break;
+      case 'navigate-trans-map': {
+        const map = ui.data.transMappings.find(item => item.id === id);
+        if (!map) throw new Error('Architecture mapping not found.');
+        switch (map.targetKind) {
+          case 'Domain': ui.domainFilter = ui.data.domains.find(item => item.name === C.transformation.DOMAINS.find(domain => domain.id === map.targetId)?.parent)?.id || null; navigate('topology'); break;
+          case 'Component': ui.selectedComponentId = map.targetId; navigate('topology'); break;
+          case 'Site': ui.selectedSiteId = map.targetId; navigate('readiness'); break;
+          case 'Branch': ui.selectedBranchId = map.targetId; navigate('branches'); break;
+          case 'Branch Pattern': ui.selectedPatternId = map.targetId; navigate('patterns'); break;
+          case 'Decision': ui.selectedDecisionId = map.targetId; navigate('decisions'); break;
+          case 'Dependency': ui.selectedComponentId = ui.data.dependencies.find(item => item.id === map.targetId)?.fromId || null; navigate('dependencies'); break;
+          case 'Source': toast('Source reference: ' + (ui.data.sources.find(item => item.id === map.targetId)?.title || 'Unknown')); break;
+        }
+        break;
+      }
       case 'apply-meraki': await persist(C.meraki.applyCandidate(ui.data, id), 'Meraki candidate recorded as Observed. Run validation separately.'); break;
       case 'dismiss-meraki': await persist(C.meraki.dismissCandidate(ui.data, id), 'Meraki candidate dismissed.'); break;
       case 'new-branch': ui.newBranch = true; navigate('branches'); break;
@@ -335,6 +378,20 @@
         render(); toast('Meraki snapshot loaded for review.');
       });
     }
+    if (target.id === 'trans-file') {
+      const file = target.files[0]; target.value = '';
+      if (file) run(async () => {
+        ui.transPreview = null;
+        if (file.size > 25 * 1024 * 1024) throw new Error('Workbook exceeds 25 MB.');
+        const parsed = C.transformation.parseWorkbook(await file.arrayBuffer(), file.name);
+        ui.transPreview = C.transformation.previewImport(ui.data, parsed);
+        render(); toast('Workbook mapped locally. Review changes before applying.');
+      });
+    }
+    if (target.id === 'trans-timeline-by') { ui.transTimelineBy = target.value; render(); }
+    if (target.id === 'trans-project') { ui.transProjectId = target.value; render(); }
+    if (target.id === 'trans-activity-stream') { run(() => persist(C.transformation.linkActivity(ui.data, target.dataset.id, target.value), 'Activity linked to stream.')); }
+    if (target.matches('[data-dependency-id]')) { run(() => persist(C.transformation.linkDependency(ui.data, target.dataset.dependencyId, target.value), 'Stream dependency linked.')); }
   });
   document.addEventListener('input', event => {
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
@@ -359,6 +416,8 @@
         await persist(result.data, `${result.count} Meraki candidates staged for review.`);
       });
     }
+    if (event.target.matches('#trans-gate-form')) { event.preventDefault(); run(() => saveTransGate(event.target)); }
+    if (event.target.matches('#trans-map-form')) { event.preventDefault(); run(() => saveTransMapping(event.target)); }
   });
   async function init() {
     try {

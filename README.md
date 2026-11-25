@@ -6,7 +6,7 @@ A zero-install, local-first browser application for architecture visibility acro
 
 Download or unzip this repository, then open `index.html` in a current macOS browser. No terminal, server, package installation or build is needed. The first open creates a synthetic workspace in that browser's IndexedDB. Use the same browser profile and the same local file location to reopen it.
 
-The application has architecture and branch screens, six deployment assurance screens, and Meraki Review. Current, Transition and Future are selectable for architecture views. Design Intent, Observed, Validated and As-Built remain separate perspectives.
+The application has architecture and branch screens, six deployment assurance screens, Meraki Review, and a Transformation Portfolio. Current, Transition and Future are selectable for architecture views. Design Intent, Observed, Validated and As-Built remain separate perspectives.
 
 ## Your data
 
@@ -17,6 +17,8 @@ You can start a branch with a site name and proposed pattern, then add its devic
 Deployment assurance uses an active Design Intent baseline and sourced Observed values. **Run validation** creates immutable rule results; entering new observations or As-Built values never edits an earlier run or the baseline. Critical mandatory failures make Deployment Acceptance **FAILED**. An architect must explicitly approve exceptions and record any acceptance. The demonstration results and sources are synthetic.
 
 Meraki Review can stage a user-selected Dashboard snapshot and apply individual values as Observed after review. The optional [macOS companion](docs/MERAKI_COMPANION.md) uses a Keychain API key and read-only Dashboard GET requests to collect that snapshot. The browser does not connect to Meraki, hold credentials, or change Design Intent automatically. The companion is not needed to open or use the browser app.
+
+The [Transformation Portfolio](docs/TRANSFORMATION_IMPORT.md) locally reads the two-sheet `OM Plan - streams.xlsx` format. It previews new, changed and removed source rows and data quality issues before you confirm. Architect mappings and gates stay separate from workbook planning status and survive re-import. The original workbook is not saved; JSON backup includes the imported projection and enrichment. Keep customer workbooks and backups outside Git. The XLSX parser is bundled locally, so no CDN or build is needed.
 
 ## Development verification
 

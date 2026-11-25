@@ -18,7 +18,7 @@
     }
     return lines.map((line, index) => `<tspan x="0" dy="${index ? 16 : 0}">${escape(line)}</tspan>`).join('');
   }
-  function mount(svg, data, state, domainId, selectedId, onSelect, initialCamera = null) {
+  function mount(svg, data, state, domainId, selectedId, onSelect, initialCamera = null, affectedIds = []) {
     const components = C.model.visibleComponents(data, state, domainId);
     const links = C.model.visibleLinks(data, state, components);
     const byId = new Map(components.map(item => [item.id, item]));
@@ -30,7 +30,7 @@
       }).join('') +
       components.map(item => {
         const color = palette[domainById.get(item.domainId)] || '#a3b7c8';
-        return `<g class="topology-node${item.id === selectedId ? ' selected' : ''}" data-node="${escape(item.id)}" tabindex="0" role="button" aria-label="Select ${escape(item.name)}" transform="translate(${Number(item.x) || 0},${Number(item.y) || 0})"><rect width="124" height="50" rx="11" fill="#172d41" stroke="${color}" stroke-width="2"/><text x="62" y="${item.name.length > 17 ? 18 : 30}" text-anchor="middle" fill="#eef8fd">${labelLines(item.name)}</text></g>`;
+        return `<g class="topology-node${item.id === selectedId ? ' selected' : ''}${affectedIds.includes(item.id) ? ' affected' : ''}" data-node="${escape(item.id)}" tabindex="0" role="button" aria-label="Select ${escape(item.name)}" transform="translate(${Number(item.x) || 0},${Number(item.y) || 0})"><rect width="124" height="50" rx="11" fill="#172d41" stroke="${color}" stroke-width="2"/><text x="62" y="${item.name.length > 17 ? 18 : 30}" text-anchor="middle" fill="#eef8fd">${labelLines(item.name)}</text></g>`;
       }).join('');
 
     let camera = initialCamera ? { ...initialCamera } : { x: -15, y: -40, w: 1210, h: 640 };

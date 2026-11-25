@@ -76,3 +76,41 @@
 .meraki-candidate small{color:#8daebe;overflow-wrap:anywhere}
 .meraki-candidate .exception-actions{flex-shrink:0;margin-top:0}
 @media(max-width:760px){.meraki-candidate{flex-direction:column}.meraki-candidate .exception-actions{flex-shrink:1}}
+
+/* Transformation portfolio */
+.trans-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.trans-two .panel{min-width:0}
+.trans-two .fact-row{align-items:flex-start;gap:12px}
+.trans-two .fact-row strong{overflow-wrap:anywhere}
+.trans-summary{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}
+.trans-summary span{border:1px solid #304e63;border-radius:8px;padding:9px 12px;color:#a4bfce;text-transform:capitalize;font-size:.76rem}
+.trans-summary strong{color:#e8f4fa;margin-left:5px}
+.trans-preview-list{max-height:330px;overflow:auto;margin:12px 0}
+.trans-preview-list>div{padding:8px 0;border-top:1px solid #304e63;font-size:.77rem}
+.trans-preview-list small{display:block;color:#8daebe;margin-top:3px}
+.trans-timeline-scroll{overflow-x:auto}
+.trans-calendar{border-collapse:collapse;min-width:max-content;width:100%;font-size:.72rem}
+.trans-calendar th,.trans-calendar td{padding:9px 5px;border-bottom:1px solid #304e63;border-right:1px solid #304e63}
+.trans-calendar th:first-child{min-width:220px;text-align:left}
+.trans-calendar thead th:not(:first-child){min-width:76px;text-align:center;color:#acd8e4}
+.trans-calendar th small{display:block;color:#8daebe;margin-top:3px;font-weight:400}
+.trans-group-row th{background:#203f53;color:#d8eefa;text-align:left}
+.trans-month-cell{text-align:center;background:transparent;color:#637e8e}
+.trans-month-cell.in-window{background:#245166;color:#80dce7}
+.trans-month-cell.source-marker{box-shadow:inset 0 -4px #e6bc63}
+.trans-month-cell button{width:100%;background:transparent;border:0;color:inherit;cursor:pointer}
+.trans-month-cell:focus-within,.trans-month-cell:hover{outline:2px solid #9be8ed;outline-offset:-2px}
+.trans-matrix{min-width:1350px}
+.trans-matrix th,.trans-matrix td{min-width:82px;white-space:normal;text-align:center}
+.trans-matrix th:first-child{min-width:230px;text-align:left}
+.trans-matrix th small{display:block;color:#8daebe;font-weight:400}
+.trans-matrix-hit{background:transparent;border:0;color:#7fe0e8;font-size:1.15rem;cursor:pointer}
+.trans-matrix-source{background:transparent;border:0;color:#e6bc63;font-size:.8rem;font-weight:700;cursor:pointer}
+.trans-dependency{display:grid;grid-template-columns:1.2fr 1fr 1.2fr 1.3fr;gap:12px;align-items:center;padding:15px 0;border-top:1px solid #304e63;font-size:.77rem}
+.trans-dependency small{display:block;color:#8daebe;margin-top:5px}
+.trans-dependency-arrow{text-align:center;color:#7fe0e8;font-size:1.3rem}
+.trans-dependency-arrow small{font-size:.7rem;color:#a4bfce}
+.trans-dependency label{display:grid;gap:5px;color:#a4bfce}
+@media(max-width:1050px){.trans-two{grid-template-columns:1fr}.trans-dependency{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.trans-dependency{grid-template-columns:1fr}}
+.topology-node.affected rect{stroke:#f5cd70;stroke-width:4;filter:drop-shadow(0 0 8px #f5cd70a8)}
