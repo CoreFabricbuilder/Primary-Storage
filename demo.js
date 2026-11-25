@@ -84,6 +84,7 @@
     ['one-mutual-place', 'One Mutual Place', 'Campus LAN', 'site-one-mutual-place', 'Campus', 'Illustrative campus architecture.', 810, 470],
     ['branch-estate', 'Branch Estate', 'Branch', null, 'Estate', 'Logical grouping for example branches.', 810, 300],
     ['shared-services', 'Shared Services', 'Shared Services', 'site-teraco', 'Services', 'Illustrative shared network services.', 820, 150],
+    ['mainframe', 'Mainframe', 'Shared Services', 'site-teraco', 'Service', 'Illustrative mainframe service endpoint.', 1010, 75],
     ['branch-north', 'Example Branch North', 'Branch', 'site-branch-north', 'Branch', 'Synthetic branch using 10.101.0.0/24.', 1010, 240],
     ['branch-south', 'Example Branch South', 'Branch', 'site-branch-south', 'Branch', 'Synthetic branch using 10.102.0.0/24.', 1010, 370],
   ].map(([key, name, domain, siteId, type, description, x, y]) => ({ id: `comp-${key}`, name, domainId: domainId(domain), siteId, type, description, x, y }));
@@ -92,9 +93,9 @@
     perspective: 'Design Intent', classification: state === 'Current' ? 'Inferred' : 'Target', sourceId,
   })));
   const edgeSets = {
-    Current: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['teraco', 'aws'], ['teraco', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['teraco', 'mutual-park'], ['teraco', 'one-mutual-place']],
-    Transition: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['teraco', 'aws'], ['teraco', 'catalyst-sdwan'], ['catalyst-sdwan', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['catalyst-sdwan', 'mutual-park'], ['catalyst-sdwan', 'one-mutual-place']],
-    Future: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['teraco', 'aws'], ['teraco', 'catalyst-sdwan'], ['catalyst-sdwan', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['catalyst-sdwan', 'mutual-park'], ['catalyst-sdwan', 'one-mutual-place'], ['shared-services', 'aws']],
+    Current: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['shared-services', 'mainframe'], ['teraco', 'aws'], ['teraco', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['teraco', 'mutual-park'], ['teraco', 'one-mutual-place']],
+    Transition: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['shared-services', 'mainframe'], ['teraco', 'aws'], ['teraco', 'catalyst-sdwan'], ['catalyst-sdwan', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['catalyst-sdwan', 'mutual-park'], ['catalyst-sdwan', 'one-mutual-place']],
+    Future: [['internet', 'perimeter-firewall'], ['perimeter-firewall', 'teraco'], ['teraco', 'core-firewall'], ['core-firewall', 'shared-services'], ['shared-services', 'mainframe'], ['teraco', 'aws'], ['teraco', 'catalyst-sdwan'], ['catalyst-sdwan', 'branch-estate'], ['branch-estate', 'branch-north'], ['branch-estate', 'branch-south'], ['catalyst-sdwan', 'mutual-park'], ['catalyst-sdwan', 'one-mutual-place'], ['shared-services', 'aws']],
   };
   const topologyLinks = states.flatMap(state => edgeSets[state].map(([from, to], index) => ({
     id: `link-${state.toLowerCase()}-${index}`, fromId: `comp-${from}`, toId: `comp-${to}`, state,
@@ -165,12 +166,24 @@
   ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
     ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 6, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 7, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
     assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
     merakiBatches: [], merakiCandidates: [],
     sdwanBatches: [], sdwanCandidates: [], sdwanObservations: [], sdwanTargets: [], sdwanRuns: [], sdwanResults: [],
+    serviceFlows: [
+      ['branch-internet', 'Branch to Internet', 'comp-branch-north', 'comp-internet'],
+      ['branch-aws', 'Branch to AWS', 'comp-branch-north', 'comp-aws'],
+      ['branch-mainframe', 'Branch to Mainframe', 'comp-branch-north', 'comp-mainframe'],
+      ['campus-shared', 'Campus to Shared Services', 'comp-mutual-park', 'comp-shared-services'],
+    ].map(([key, name, fromId, toId]) => ({ id: `flow-${key}`, name, fromId, toId, state: 'All', classification: 'Inferred', source: 'Synthetic logical topology example' })),
+    segmentationLinks: [
+      ['VRF', 'vrf-corporate', 'Site', 'site-branch-north'], ['VRF', 'vrf-corporate', 'Service', 'service-shared'],
+      ['SD-WAN VPN', 'vpn-corporate', 'Site', 'site-branch-north'], ['SD-WAN VPN', 'vpn-corporate', 'Component', 'comp-catalyst-sdwan'],
+      ['VLAN', 'vlan-north-users', 'Device', 'device-north-switch'], ['Subnet', 'subnet-north', 'Decision', 'dec-branch-subnets'],
+    ].map(([segmentKind, segmentId, targetKind, targetId], index) => ({ id: `seg-syn-${index}`, segmentKind, segmentId, targetKind, targetId, classification: 'Inferred', source: 'Synthetic segmentation example' })),
+    deploymentBaselines: [], driftReviews: [],
     transProgrammes: [], transProjects: [], transStreams: [], transActivities: [], transDependencies: [], transMilestones: [], transMappings: [], transGates: [], planImports: [], importChanges: [], dataQualityIssues: [],
   };
   const syntheticMerakiSnapshot = {
@@ -216,6 +229,27 @@
     result = C.transformation.addMapping(result, 'Stream', north.id, 'Decision', 'dec-sdwan-handoff');
     result = C.transformation.addMapping(result, 'Stream', north.id, 'LLD', null, 'Synthetic branch LLD reference');
     result = C.transformation.linkDependency(result, result.transDependencies.find(item => item.streamId === north.id).id, core.id);
-    return result;
+    // Separate synthetic accepted deployment keeps the northern Critical failure example intact.
+    result = C.model.copy(result);
+    const oldSouth = result.assuranceBaselines.find(item => item.id === 'baseline-syn-south');
+    oldSouth.status = 'Superseded';
+    const southBaseline = { ...oldSouth, id: 'baseline-syn-south-accepted', status: 'Active', name: 'Synthetic accepted south deployment',
+      source: 'Synthetic architect acceptance example', createdAt: '2026-11-25T00:00:00Z', values: {} };
+    for (const rule of result.assuranceRules) {
+      const value = rule.comparator === 'number' ? '1' : rule.comparator === 'set' ? 'Example' : 'Operational';
+      southBaseline.values[rule.id] = value;
+      result.assuranceObservations.push({ id: `obs-south-accepted-${rule.code.toLowerCase()}`, branchId: 'branch-south', ruleId: rule.id,
+        perspective: 'Observed', classification: 'Observed', value, source: 'Synthetic accepted deployment observation', recordedAt: '2026-11-25T00:00:00Z' });
+    }
+    result.assuranceBaselines.push(southBaseline);
+    result = C.assurance.runValidation(C.model.validateWorkspace(result), 'branch-south').data;
+    result = C.assurance.recordAcceptance(result, C.assurance.latestRun(result, 'branch-south').id, 'Synthetic architect', 'Synthetic south branch acceptance.');
+    result = C.intelligence.createBaseline(result, result.acceptanceRecords.at(-1).id, 'Synthetic architect', 'Illustrative As-Built snapshot.').data;
+    const afterAcceptance = new Date(Date.now() + 1).toISOString();
+    result.assuranceObservations.push({ id: 'obs-south-drift-lan', branchId: 'branch-south', ruleId: 'rule-lan-sw-count', perspective: 'Observed',
+      classification: 'Observed', value: '2', source: 'Synthetic later inventory', recordedAt: afterAcceptance });
+    result.assuranceObservations.push({ id: 'obs-south-no-change-sdwan', branchId: 'branch-south', ruleId: 'rule-sdw-edge-count', perspective: 'Observed',
+      classification: 'Observed', value: '1', source: 'Synthetic later WAN Edge check', recordedAt: afterAcceptance });
+    return C.model.validateWorkspace(result);
   } });
 })();

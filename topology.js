@@ -18,7 +18,7 @@
     }
     return lines.map((line, index) => `<tspan x="0" dy="${index ? 16 : 0}">${escape(line)}</tspan>`).join('');
   }
-  function mount(svg, data, state, domainId, selectedId, onSelect, initialCamera = null, affectedIds = []) {
+  function mount(svg, data, state, domainId, selectedId, onSelect, initialCamera = null, affectedIds = [], highlightedLinkIds = []) {
     const components = C.model.visibleComponents(data, state, domainId);
     const links = C.model.visibleLinks(data, state, components);
     const byId = new Map(components.map(item => [item.id, item]));
@@ -26,7 +26,7 @@
     svg.innerHTML = `<defs><pattern id="topology-grid" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#51708a" opacity=".45"/></pattern><marker id="topology-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#7e98ac"/></marker></defs><rect class="topology-background" x="-1000" y="-1000" width="4000" height="3000" fill="url(#topology-grid)"/>` +
       links.map(link => {
         const from = byId.get(link.fromId), to = byId.get(link.toId);
-        return `<line class="topology-edge" x1="${from.x + 62}" y1="${from.y + 25}" x2="${to.x + 62}" y2="${to.y + 25}" marker-end="url(#topology-arrow)"><title>${escape(link.label)}</title></line>`;
+        return `<line class="topology-edge${highlightedLinkIds.includes(link.id) ? ' highlighted' : ''}" data-link="${escape(link.id)}" x1="${from.x + 62}" y1="${from.y + 25}" x2="${to.x + 62}" y2="${to.y + 25}" marker-end="url(#topology-arrow)"><title>${escape(link.label)}</title></line>`;
       }).join('') +
       components.map(item => {
         const color = palette[domainById.get(item.domainId)] || '#a3b7c8';
