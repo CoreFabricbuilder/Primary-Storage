@@ -252,6 +252,6 @@
         }).join('') || '<p class="muted">No supported rule candidates in this snapshot.</p>'}</section>`;
       }).join('') || '<section class="panel empty-state"><p>No Meraki snapshots staged for this branch.</p></section>');
   }
-  C.views = Object.freeze({ h, badge, overview, topology, readiness, decisions, dependencies, branches, estate, patterns,
+  C.views = Object.freeze({ h, badge, overview, topology, readiness, decisions, dependencies, branches, estate, patterns, ...C.scenarioViews,
     deployment, deploymentReadiness, validation, exceptions, acceptance, baselines, meraki, ...C.transViews, ...C.sdwanViews, ...C.intelligenceViews, currentEstate: C.currentReportViews.currentEstate, sourceName });
 })();

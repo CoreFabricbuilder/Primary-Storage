@@ -9,7 +9,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'views.js']) {
+  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -25,7 +25,7 @@ test('synthetic workspace has complete screen coverage and RFC1918 examples', ()
   assert.equal(C.model.visibleComponents(data, 'Current').some(item => item.name === 'Catalyst SD-WAN'), false);
   assert.equal(C.model.visibleComponents(data, 'Transition').some(item => item.name === 'Catalyst SD-WAN'), true);
   assert.deepEqual([...data.subnets.map(item => item.cidr)], ['10.255.0.0/24', '10.10.0.0/16', '10.20.0.0/16', '10.101.0.0/24', '10.102.0.0/24']);
-  for (const screen of ['overview', 'topology', 'readiness', 'decisions', 'dependencies', 'branches', 'estate', 'patterns']) {
+  for (const screen of ['overview', 'topology', 'readiness', 'decisions', 'dependencies', 'branches', 'estate', 'patterns', 'scenarios']) {
     const html = C.views[screen](data, { state: 'Transition', domainFilter: null, selectedComponentId: null, selectedSiteId: null, selectedDecisionId: null, selectedBranchId: null, decisionSearch: '' });
     assert.ok(html.length > 200, `${screen} rendered`);
   }
@@ -80,7 +80,7 @@ test('view renderers escape imported text', () => {
 test('file-open entrypoint has only locally bundled assets and no module loader', () => {
   const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const assets = [...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(assets, ['styles.css', 'model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'topology.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'views.js', 'app.js']);
+  assert.deepEqual(assets, ['styles.css', 'model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'topology.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js', 'app.js']);
   for (const asset of assets) assert.ok(fs.existsSync(path.join(root, asset)), `${asset} exists`);
   assert.ok(!html.includes('type="module"'));
   assert.match(html, /connect-src 'none'/);

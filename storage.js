@@ -52,6 +52,7 @@
     const db = await open();
     const value = await readRequest(db.transaction('workspaces').objectStore('workspaces').get('active'));
     if (!value) return null;
+    if (Number.isInteger(value.schemaVersion) && value.schemaVersion > 8) throw new Error(`This app supports workspace schema 8, but this browser contains schema ${value.schemaVersion}. Open a newer app copy. Your stored data has not been changed.`);
     if (value.schemaVersion === 8) return C.model.validateWorkspace(value);
     const workspace = C.model.migrateWorkspace(value, await getPhotos());
     await saveWorkspace(workspace);
