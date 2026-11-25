@@ -22,6 +22,11 @@ work/
 *.docx
 *.xls
 *.xlsx
+*.xlsm
+*.xlsb
+*.numbers
+*.csv
+*.tsv
 *.ppt
 *.pptx
 *.odt

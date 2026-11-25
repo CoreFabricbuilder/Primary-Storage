@@ -19,3 +19,8 @@
 - Phase 4 keeps Dashboard credentials in macOS Keychain. An optional collector makes fixed-host read-only GET requests and uses built-in JavaScript for Automation to allowlist snapshot fields; the browser remains offline.
 - A Meraki snapshot must be mapped to a branch and staged. Per-candidate Apply or Dismiss decisions retain provenance. Applying never changes a baseline, earlier run or confirmation.
 - Schema 4 adds Meraki batch/candidate collections. Existing schema 3 workspaces migrate with empty vendor collections; only the synthetic demo starts with staged candidates.
+- The portfolio uses a locally bundled XLSX parser and two-sheet projection. The source workbook file is never stored; displayed cell values and row references are retained in IndexedDB and JSON backup.
+- Repeat imports use source identity keys, mark removed rows without deleting enrichment, and log import changes. An identity edit may appear as a removal plus a new record; duplicate identities are warned about.
+- Source Planning Status, timeline markers and parsed dates do not set Architecture Gates. Architect-owned mappings, activity links and gates remain separate from source rows.
+- Transformation domain labels are a finer matrix taxonomy linked to existing architecture domains. Object mappings reference existing architecture IDs; HLD/LLD and validation requirements can use explicit references.
+- The bundled parser is `@e965/xlsx` 0.20.3 (Apache 2.0). No CDN or developer tooling is needed at runtime.

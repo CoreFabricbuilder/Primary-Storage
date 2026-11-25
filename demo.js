@@ -165,11 +165,12 @@
   ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
     ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 4, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 5, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
     assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
     merakiBatches: [], merakiCandidates: [],
+    transProgrammes: [], transProjects: [], transStreams: [], transActivities: [], transDependencies: [], transMilestones: [], transMappings: [], transGates: [], planImports: [], importChanges: [], dataQualityIssues: [],
   };
   const syntheticMerakiSnapshot = {
     format: C.meraki.FORMAT, version: 1, generatedAt: '2026-11-24T00:00:00Z', organizationId: 'org-synthetic',
@@ -182,8 +183,38 @@
     ssids: [{ number: 0, name: 'Corporate', enabled: true, vlanId: 110 }],
     coverage: { statuses: true, ssids: true },
   };
+  const syntheticPlan = {
+    filename: 'Synthetic transformation example.xlsx', sheets: {
+      'Planned High Level Streams': [
+        { sheet: 'Planned High Level Streams', row: 2, values: { Location: 'Example Branch North', Workstream: 'Branch Rollout', TA: 'TA-BRANCH', Category: 'Branch', Detail: 'WAN, LAN and Wi-Fi refresh', Start: '2027-01-10', End: '2027-03-25', Dependency: 'Teraco Core ready', 'Jan 2027': '●', 'Feb 2027': '●', 'Mar 2027': '●' } },
+        { sheet: 'Planned High Level Streams', row: 3, values: { Location: 'Teraco', Workstream: 'Core Connectivity', TA: 'TA-CORE', Category: 'Teraco Core', Detail: 'Core handoff and routing', Start: '2026-12-01', End: '2027-02-28', Dependency: '', 'Dec 2026': '●', 'Jan 2027': '●', 'Feb 2027': '●' } },
+        { sheet: 'Planned High Level Streams', row: 4, values: { Location: 'Example Branch South', Workstream: 'Branch Rollout', TA: 'TA-BRANCH', Category: 'Branch', Detail: 'Second branch deployment', Start: '2027-04-01', End: '2027-05-31', Dependency: 'Example Branch North validation', 'Apr 2027': '●', 'May 2027': '●' } },
+      ],
+      'Detailed Plan': [
+        { sheet: 'Detailed Plan', row: 2, values: { 'Programme Area': 'Example Branch North', Phase: 'Design', Task: 'Complete branch LLD', 'Source Schedule': 'SYN-01', Resources: 'Synthetic architecture team', 'Source Category': 'Design', Start: '2027-01-10', End: '2027-01-31', 'Planning Status': 'TBD', 'Source Line': 'SYN-001', Notes: 'Illustrative only' } },
+        { sheet: 'Detailed Plan', row: 3, values: { 'Programme Area': 'Example Branch North', Phase: 'Deployment', Task: 'Validate branch connectivity', 'Source Schedule': 'SYN-02', Resources: 'Synthetic network team', 'Source Category': 'Validation', Start: '2027-03-01', End: '2027-03-25', 'Planning Status': 'Planned', 'Source Line': 'SYN-002', Notes: '' } },
+        { sheet: 'Detailed Plan', row: 4, values: { 'Programme Area': 'Teraco', Phase: 'Design', Task: 'Confirm core handoff', 'Source Schedule': 'SYN-03', Resources: 'Synthetic architecture team', 'Source Category': 'Design', Start: '2026-12-01', End: '2026-12-20', 'Planning Status': 'Planned', 'Source Line': 'SYN-003', Notes: '' } },
+      ],
+    },
+  };
   C.demo = Object.freeze({ create: () => {
     const data = C.assurance.runValidation(C.model.validateWorkspace(C.model.copy(workspace)), 'branch-north').data;
-    return C.meraki.stageSnapshot(data, syntheticMerakiSnapshot, 'branch-north').data;
+    let result = C.meraki.stageSnapshot(data, syntheticMerakiSnapshot, 'branch-north').data;
+    result = C.transformation.applyImport(result, C.transformation.previewImport(result, syntheticPlan));
+    const north = result.transStreams.find(item => item.source.area === 'Example Branch North');
+    const core = result.transStreams.find(item => item.source.area === 'Teraco');
+    const activity = result.transActivities.find(item => item.source.task === 'Complete branch LLD');
+    result = C.transformation.linkActivity(result, activity.id, north.id);
+    result = C.transformation.setGate(result, 'Stream', core.id, 'Architecture Defined', 'Synthetic architecture review example.');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Domain', 'catalyst-sd-wan');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Domain', 'branch-lan');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Domain', 'meraki-wi-fi');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Branch', 'branch-north');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Component', 'comp-branch-north');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Branch Pattern', 'pattern-dual-transport');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'Decision', 'dec-sdwan-handoff');
+    result = C.transformation.addMapping(result, 'Stream', north.id, 'LLD', null, 'Synthetic branch LLD reference');
+    result = C.transformation.linkDependency(result, result.transDependencies.find(item => item.streamId === north.id).id, core.id);
+    return result;
   } });
 })();

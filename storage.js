@@ -52,7 +52,7 @@
     const db = await open();
     const value = await readRequest(db.transaction('workspaces').objectStore('workspaces').get('active'));
     if (!value) return null;
-    if (value.schemaVersion === 4) return C.model.validateWorkspace(value);
+    if (value.schemaVersion === 5) return C.model.validateWorkspace(value);
     const workspace = C.model.migrateWorkspace(value, await getPhotos());
     await saveWorkspace(workspace);
     return workspace;
