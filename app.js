@@ -9,6 +9,7 @@
     merakiBranchId: null, pendingMerakiSnapshot: null,
     sdwanScope: null, pendingSdwanSnapshot: null, combinedBranchId: null,
     flowId: null, segmentKind: 'All', segmentQuery: '', segmentSelection: null, segmentTargetKind: 'Site', impactComponentId: null,
+    scenarioBranchId: null, scenarioPatternId: 'assigned', scenarioState: 'Transition', scenarioFilter: 'All',
     driftBranchId: null, driftBaselineId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
     currentReportPreview: null,
@@ -141,6 +142,7 @@
     ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
     ui.sdwanScope = null; ui.pendingSdwanSnapshot = null; ui.combinedBranchId = null;
     ui.flowId = null; ui.segmentKind = 'All'; ui.segmentQuery = ''; ui.segmentSelection = null; ui.segmentTargetKind = 'Site'; ui.impactComponentId = null;
+    ui.scenarioBranchId = null; ui.scenarioPatternId = 'assigned'; ui.scenarioState = 'Transition'; ui.scenarioFilter = 'All';
     ui.driftBranchId = null; ui.driftBaselineId = null;
     ui.transPreview = null; ui.currentReportPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
     render(); status('Restored in this browser'); toast('JSON backup restored.');
@@ -253,6 +255,7 @@
       case 'open-dependency': ui.selectedComponentId = id; navigate('dependencies'); break;
       case 'open-readiness': ui.selectedSiteId = id; navigate('readiness'); break;
       case 'open-branch': ui.selectedBranchId = id; navigate('branches'); break;
+      case 'scenario-select-branch': ui.scenarioBranchId = id; render(); break;
       case 'open-assurance': ui.assuranceBranchId = id; ui.selectedRunId = null; navigate('deployment'); break;
       case 'open-trans-item':
         if (!id || !['Stream', 'Activity'].includes(button.dataset.kind)) break;
@@ -404,6 +407,10 @@
     if (target.id === 'segment-select') { ui.segmentSelection = target.value; render(); }
     if (target.id === 'segment-target-kind') { ui.segmentTargetKind = target.value; render(); }
     if (target.id === 'impact-component') { ui.impactComponentId = target.value; render(); }
+    if (target.id === 'scenario-branch') { ui.scenarioBranchId = target.value; render(); }
+    if (target.id === 'scenario-pattern') { ui.scenarioPatternId = target.value; render(); }
+    if (target.id === 'scenario-state') { ui.scenarioState = target.value; render(); }
+    if (target.id === 'scenario-filter') { ui.scenarioFilter = target.value; render(); }
     if (target.id === 'drift-branch') { ui.driftBranchId = target.value; ui.driftBaselineId = null; render(); }
     if (target.id === 'drift-baseline') { ui.driftBaselineId = target.value; render(); }
     if (target.id === 'sdwan-file') {
@@ -529,7 +536,17 @@
       status('Saved in this browser'); render();
     } catch (error) {
       failure(error);
-      el('content').innerHTML = '<section class="panel empty-state"><h1>Local storage could not be opened</h1><p>Use a current macOS browser with IndexedDB enabled. Browser private mode or file access settings may prevent persistent storage.</p></section>';
+      const message = String(error?.message || 'Unknown startup error.');
+      const schemaIssue = /workspace schema|schema \d+/.test(message);
+      const title = schemaIssue ? 'This app copy cannot read the saved workspace' : 'Workspace could not be opened';
+      const advice = schemaIssue
+        ? 'Open the latest complete app download in this Chrome profile. Do not clear browser data; the saved workspace has not been replaced.'
+        : 'The details below identify the startup failure. If Chrome storage is blocked, use a normal browser window with local storage enabled. Do not clear browser data while troubleshooting.';
+      status(schemaIssue ? 'Workspace version mismatch' : 'Workspace startup error');
+      el('content').innerHTML = '<section class="panel empty-state"><h1 id="startup-title"></h1><p id="startup-advice"></p><p><strong>Error:</strong> <span id="startup-detail"></span></p></section>';
+      el('startup-title').textContent = title;
+      el('startup-advice').textContent = advice;
+      el('startup-detail').textContent = message;
     }
   }
   init();
