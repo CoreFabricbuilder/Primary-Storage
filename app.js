@@ -11,6 +11,7 @@
     flowId: null, segmentKind: 'All', segmentQuery: '', segmentSelection: null, segmentTargetKind: 'Site', impactComponentId: null,
     driftBranchId: null, driftBaselineId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
+    currentReportPreview: null,
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
   };
@@ -141,7 +142,7 @@
     ui.sdwanScope = null; ui.pendingSdwanSnapshot = null; ui.combinedBranchId = null;
     ui.flowId = null; ui.segmentKind = 'All'; ui.segmentQuery = ''; ui.segmentSelection = null; ui.segmentTargetKind = 'Site'; ui.impactComponentId = null;
     ui.driftBranchId = null; ui.driftBaselineId = null;
-    ui.transPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
+    ui.transPreview = null; ui.currentReportPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
   async function saveBranchSummary(form) {
@@ -384,6 +385,16 @@
     if (target.id === 'readiness-site') { ui.selectedSiteId = target.value; render(); }
     if (target.id === 'dependency-component') { ui.selectedComponentId = target.value; render(); }
     if (target.id === 'import-file') { const file = target.files[0]; target.value = ''; run(() => importBackup(file)); }
+    if (target.id === 'current-report-file') {
+      const file = target.files[0]; target.value = '';
+      if (file) run(async () => {
+        ui.currentReportPreview = null;
+        if (file.size > C.currentReport.MAX_BYTES) throw new Error('Branch report exceeds 5 MB.');
+        const parsed = C.currentReport.parse(C.currentReport.decode(await file.arrayBuffer()), file.name);
+        ui.currentReportPreview = { ...C.currentReport.plan(ui.data, parsed, { programmeName: ui.data.programme.isDemo ? 'Network Refresh' : ui.data.programme.name }), reviewed: false };
+        render(); toast('Branch report loaded. Review matching and warnings before import.');
+      });
+    }
     if (target.id === 'evidence-type') updateEvidenceInput();
     if (target.id === 'assurance-branch') { ui.assuranceBranchId = target.value; ui.selectedRunId = null; ui.selectedBaselineId = null; render(); }
     if (target.id === 'meraki-branch') { ui.merakiBranchId = target.value; render(); }
@@ -432,6 +443,25 @@
     if (event.target.id === 'decision-search') { ui.decisionSearch = event.target.value; filterDecisions(); }
   });
   document.addEventListener('submit', event => {
+    if (event.target.matches('#current-report-form')) {
+      event.preventDefault(); const values = new FormData(event.target);
+      run(async () => {
+        const preview = ui.currentReportPreview;
+        if (!preview) throw new Error('Select a branch report first.');
+        const options = { mode: String(values.get('mode')), sourceDate: String(values.get('sourceDate')), programmeName: String(values.get('programmeName')).trim() };
+        const changed = options.mode !== preview.mode || options.sourceDate !== preview.sourceDate || options.programmeName !== preview.programmeName;
+        if (changed || !preview.reviewed) {
+          ui.currentReportPreview = { ...C.currentReport.plan(ui.data, preview.parsed, options), reviewed: true };
+          render(); toast('Import options reviewed. Check the row preview, then apply.'); return;
+        }
+        if (preview.mode === 'new' && !window.confirm('Replace this browser workspace and its photographs with the reviewed Current State branch report? Export JSON first if you need the existing data.')) return;
+        const result = C.currentReport.apply(ui.data, preview);
+        if (preview.mode === 'new') await C.storage.replaceWorkspace(result.data);
+        else await C.storage.saveWorkspace(result.data);
+        ui.data = result.data; ui.currentReportPreview = null; ui.state = 'Current'; ui.screen = 'currentEstate';
+        status('Saved in this browser'); render(); toast(`${result.changed} Current State branch observations saved.`);
+      });
+    }
     if (event.target.matches('#decision-form')) { event.preventDefault(); run(() => saveDecision(event.target)); }
     if (event.target.matches('#branch-summary-form')) { event.preventDefault(); run(() => saveBranchSummary(event.target)); }
     if (event.target.matches('#branch-evidence-form')) { event.preventDefault(); run(() => saveEvidence(event.target)); }

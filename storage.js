@@ -52,7 +52,7 @@
     const db = await open();
     const value = await readRequest(db.transaction('workspaces').objectStore('workspaces').get('active'));
     if (!value) return null;
-    if (value.schemaVersion === 7) return C.model.validateWorkspace(value);
+    if (value.schemaVersion === 8) return C.model.validateWorkspace(value);
     const workspace = C.model.migrateWorkspace(value, await getPhotos());
     await saveWorkspace(workspace);
     return workspace;
@@ -60,6 +60,14 @@
   async function saveWorkspace(workspace) {
     C.model.validateWorkspace(workspace);
     await write(['workspaces'], tx => tx.objectStore('workspaces').put(workspace));
+  }
+  async function replaceWorkspace(workspace) {
+    C.model.validateWorkspace(workspace);
+    await write(['workspaces', 'photos'], tx => {
+      tx.objectStore('workspaces').clear();
+      tx.objectStore('photos').clear();
+      tx.objectStore('workspaces').put(workspace);
+    });
   }
   async function getPhotos(branchId = null) {
     const db = await open();
@@ -174,5 +182,5 @@
       backup.photos.forEach(photo => photos.put(photo));
     });
   }
-  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, getPhotos, addPhoto, addPhotos, removePhoto, saveEvidenceWithPhotos, removeEvidenceWithPhoto, makeBackup, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
+  C.storage = Object.freeze({ open, getWorkspace, saveWorkspace, replaceWorkspace, getPhotos, addPhoto, addPhotos, removePhoto, saveEvidenceWithPhotos, removeEvidenceWithPhoto, makeBackup, createBackup, parseBackup, restoreBackup, allowedImageTypes, MAX_PHOTO_BYTES });
 })();
