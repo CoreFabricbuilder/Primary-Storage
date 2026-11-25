@@ -15,7 +15,7 @@ function load() {
     }
   }
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, FileReader, console });
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'views.js']) {
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -83,7 +83,7 @@ test('version 1 workspace migration preserves legacy photograph provenance', () 
   old.branchPatterns.forEach(item => { delete item.code; delete item.intendedUse; delete item.expectations; });
   old.branches.forEach(item => { delete item.siteCode; delete item.locationDescription; delete item.currentStateConfidence; delete item.deploymentReadiness; delete item.validationStatus; delete item.lastUpdated; });
   const migrated = C.model.migrateWorkspace(old, [{ id: 'legacy-photo', branchId: 'branch-north', deviceId: 'device-north-ap', sourceLabel: 'Legacy architect photo', addedAt: '2026-11-20T12:00:00Z', classification: 'Observed', note: '' }]);
-  assert.equal(migrated.schemaVersion, 8);
+  assert.equal(migrated.schemaVersion, 9);
   assert.equal(migrated.branchEvidence.at(-1).photoId, 'legacy-photo');
   assert.equal(migrated.branchEvidence.at(-1).classification, 'Observed');
   assert.equal(migrated.branches[0].currentStateConfidence, 'Unknown');

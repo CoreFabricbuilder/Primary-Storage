@@ -1,3 +1,3 @@
 # Next phase
 
-On the target Mac, open the updated app with the imported Current State workspace and review representative Current-to-Transition gaps. Define actual SD-WAN Transition/Future intent in saved Branch Patterns and architect decisions. Add only architect-reviewed mappings from report strings to normalized circuits, devices and segments. Keep observations, targets and frozen As-Built Baselines separate. Native packaging remains deferred.
+Review the Document Library on the target Mac using a few non-sensitive test files and a OneDrive link. Export JSON after adding local documents and verify restore before relying on browser storage. For shared authoring or central search, choose the authoritative OneDrive/SharePoint library and design an optional permission-aware integration; keep the zero-install browser app independent of it. Continue architect-reviewed Current-to-Transition modelling. Native packaging remains deferred.
