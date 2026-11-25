@@ -114,3 +114,16 @@
 @media(max-width:1050px){.trans-two{grid-template-columns:1fr}.trans-dependency{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.trans-dependency{grid-template-columns:1fr}}
 .topology-node.affected rect{stroke:#f5cd70;stroke-width:4;filter:drop-shadow(0 0 8px #f5cd70a8)}
+/* Phase 7 path and relationship views */
+.topology-edge.highlighted{stroke:#f3c969;stroke-width:5;opacity:1;filter:drop-shadow(0 0 5px #e8bd5a)}
+.intelligence-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:18px 0}
+.intelligence-grid .panel{min-width:0}
+.intelligence-list{list-style:none;margin:12px 0 0;padding:0}
+.intelligence-list li{padding:8px 0;border-top:1px solid #2a4255;line-height:1.4}
+.intelligence-list small{display:block;color:#8eacbc}
+.intelligence-controls{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin:16px 0}
+.intelligence-controls label{min-width:180px;flex:1}
+.intelligence-controls select,.intelligence-controls input{width:100%}
+.flow-path{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:12px 0}
+.flow-path span{padding:7px 11px;background:#1d3d50;border:1px solid #42677c;border-radius:7px}
+.drift-table .attention{font-weight:700}

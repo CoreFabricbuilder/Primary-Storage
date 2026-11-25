@@ -7,7 +7,7 @@ const vm = require('node:vm');
 
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
-  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'views.js']) {
+  for (const file of ['model.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
   }
   return context.window.Cockpit;
@@ -66,7 +66,7 @@ test('schema 3 migration and JSON backup retain the correct Meraki review state'
   const legacy = C.model.copy(data);
   legacy.schemaVersion = 3; delete legacy.merakiBatches; delete legacy.merakiCandidates;
   const migrated = C.model.migrateWorkspace(legacy);
-  assert.equal(migrated.schemaVersion, 6);
+  assert.equal(migrated.schemaVersion, 7);
   assert.equal(migrated.assuranceRuns.length, data.assuranceRuns.length);
   assert.equal(migrated.merakiBatches.length, 0);
   assert.equal(migrated.merakiCandidates.length, 0);

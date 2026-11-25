@@ -1,3 +1,3 @@
 # Next phase
 
-After this PR is reviewed and merged, validate the optional collector against the programme's supported Catalyst SD-WAN Manager release with a read-only account. Confirm endpoint field names, pagination and optional association coverage. Add release-specific mappings only when supported by observed responses. Keep credentials in Keychain and all runtime snapshots outside Git. Native macOS packaging remains deferred.
+After Phase 7 review and merge, validate the browser flows and optional read-only collectors on the target Mac and supported vendor releases. Reconcile any release-specific API fields through the existing normalized snapshot adapters. Extend service and segmentation links only from sourced architecture evidence; keep As-Built Baselines frozen and drift review architect controlled. Native packaging remains deferred.

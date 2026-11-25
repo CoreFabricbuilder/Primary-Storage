@@ -8,6 +8,8 @@
     selectedBranchId: null, selectedPatternId: null, newBranch: false, assuranceBranchId: null, selectedRunId: null, selectedBaselineId: null,
     merakiBranchId: null, pendingMerakiSnapshot: null,
     sdwanScope: null, pendingSdwanSnapshot: null, combinedBranchId: null,
+    flowId: null, segmentKind: 'All', segmentQuery: '', segmentSelection: null, segmentTargetKind: 'Site', impactComponentId: null,
+    driftBranchId: null, driftBaselineId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
     decisionSearch: '', camera: null, topologyController: null,
     photoUrls: [], renderToken: 0, busy: false,
@@ -57,6 +59,12 @@
         ui.selectedComponentId = id;
         render();
       }, ui.camera, ui.transHighlightIds);
+    } else if (ui.screen === 'serviceFlows') {
+      const flow = data.serviceFlows.find(item => item.id === ui.flowId) || data.serviceFlows[0];
+      const path = flow ? C.intelligence.flowPath(data, flow, ui.state) : null;
+      ui.topologyController = C.topology.mount(el('flow-svg'), data, ui.state, null, null, id => {
+        ui.impactComponentId = id; navigate('impact');
+      }, ui.camera, path?.nodeIds || [], path?.linkIds || []);
     } else ui.topologyController = null;
     if (ui.screen === 'branches') { showPhotos(token).catch(failure); updateEvidenceInput(); }
     if (ui.screen === 'decisions' && ui.decisionSearch) filterDecisions();
@@ -131,6 +139,8 @@
     ui.selectedComponentId = null; ui.selectedSiteId = null; ui.selectedDecisionId = null; ui.selectedBranchId = null; ui.selectedPatternId = null; ui.newBranch = false;
     ui.assuranceBranchId = null; ui.selectedRunId = null; ui.selectedBaselineId = null;
     ui.sdwanScope = null; ui.pendingSdwanSnapshot = null; ui.combinedBranchId = null;
+    ui.flowId = null; ui.segmentKind = 'All'; ui.segmentQuery = ''; ui.segmentSelection = null; ui.segmentTargetKind = 'Site'; ui.impactComponentId = null;
+    ui.driftBranchId = null; ui.driftBaselineId = null;
     ui.transPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
@@ -379,6 +389,12 @@
     if (target.id === 'meraki-branch') { ui.merakiBranchId = target.value; render(); }
     if (target.id === 'sdwan-scope') { ui.sdwanScope = target.value; render(); }
     if (target.id === 'combined-branch') { ui.combinedBranchId = target.value; render(); }
+    if (target.id === 'flow-select') { ui.flowId = target.value; ui.camera = null; render(); }
+    if (target.id === 'segment-select') { ui.segmentSelection = target.value; render(); }
+    if (target.id === 'segment-target-kind') { ui.segmentTargetKind = target.value; render(); }
+    if (target.id === 'impact-component') { ui.impactComponentId = target.value; render(); }
+    if (target.id === 'drift-branch') { ui.driftBranchId = target.value; ui.driftBaselineId = null; render(); }
+    if (target.id === 'drift-baseline') { ui.driftBaselineId = target.value; render(); }
     if (target.id === 'sdwan-file') {
       const file = target.files[0]; target.value = '';
       if (file) run(async () => {
@@ -450,6 +466,27 @@
       const [kind, scopeId] = (ui.sdwanScope || `Branch|${ui.data.branches[0]?.id}`).split('|');
       const values = Object.fromEntries(new FormData(event.target));
       run(() => persist(C.sdwan.saveTarget(ui.data, kind, scopeId, values, String(values.source || '')), 'SD-WAN target version saved.'));
+    }
+    if (event.target.matches('#flow-form')) {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(event.target));
+      run(async () => { const result = C.intelligence.createFlow(ui.data, values); ui.flowId = result.id; await persist(result.data, 'Logical service flow saved.'); });
+    }
+    if (event.target.matches('#segment-search-form')) {
+      event.preventDefault(); const values = new FormData(event.target);
+      ui.segmentKind = String(values.get('kind') || 'All'); ui.segmentQuery = String(values.get('query') || '').trim(); ui.segmentSelection = null; render();
+    }
+    if (event.target.matches('#segment-link-form')) {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(event.target));
+      run(() => persist(C.intelligence.addSegmentationLink(ui.data, values).data, 'Sourced segmentation link added.'));
+    }
+    if (event.target.matches('#deployment-baseline-form')) {
+      event.preventDefault(); const values = new FormData(event.target);
+      run(async () => { const result = C.intelligence.createBaseline(ui.data, String(values.get('acceptanceId') || ''), String(values.get('architect') || '').trim(), String(values.get('note') || '').trim()); ui.driftBaselineId = result.id; await persist(result.data, 'Accepted deployment marked as an As-Built Baseline.'); });
+    }
+    if (event.target.matches('.drift-review-form')) {
+      event.preventDefault(); const form = event.target, values = new FormData(form);
+      run(() => persist(C.intelligence.reviewDrift(ui.data, { baselineId: form.dataset.baselineId, itemKey: form.dataset.itemKey, observationId: form.dataset.observationId,
+        classification: String(values.get('classification') || ''), decisionId: String(values.get('decisionId') || ''), architect: String(values.get('architect') || '').trim(), rationale: String(values.get('rationale') || '').trim() }), 'Drift review recorded. Baseline unchanged.'));
     }
     if (event.target.matches('#trans-gate-form')) { event.preventDefault(); run(() => saveTransGate(event.target)); }
     if (event.target.matches('#trans-map-form')) { event.preventDefault(); run(() => saveTransMapping(event.target)); }
