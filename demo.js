@@ -166,7 +166,7 @@
   ].map(([branchId, code, perspective, value, source], index) => ({ id: `assurance-observation-syn-${index}`, branchId,
     ruleId: `rule-${code.toLowerCase()}`, perspective, classification: perspective, value, source, recordedAt: '2026-11-24T00:00:00Z' }));
   const workspace = {
-    schemaVersion: 9, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
+    schemaVersion: 10, id: 'active', programme: { id: 'programme-demo', name: 'Network Refresh — Synthetic Demo', description: 'Illustrative architecture; replace with validated programme evidence.', isDemo: true },
     domains, sites, branchPatterns, branches, branchAttributes, branchEvidence, devices, interfaces, circuits, vlans, vrfs, sdwanVpns, subnets, routingAdjacencies, services,
     components, componentStates, topologyLinks, lldReadiness, decisions, dependencies, sources, facts, evidence, validationRules, validationResults,
     assuranceRules, assuranceObservations, assuranceBaselines, assuranceRuns: [], assuranceResults: [], assuranceExceptions: [], acceptanceGates, acceptanceRecords: [],
@@ -184,7 +184,7 @@
       ['VLAN', 'vlan-north-users', 'Device', 'device-north-switch'], ['Subnet', 'subnet-north', 'Decision', 'dec-branch-subnets'],
     ].map(([segmentKind, segmentId, targetKind, targetId], index) => ({ id: `seg-syn-${index}`, segmentKind, segmentId, targetKind, targetId, classification: 'Inferred', source: 'Synthetic segmentation example' })),
     deploymentBaselines: [], driftReviews: [], currentReportImports: [], currentBranchReports: [], libraryDocuments: [], documentLinks: [],
-    transProgrammes: [], transProjects: [], transStreams: [], transActivities: [], transDependencies: [], transMilestones: [], transMappings: [], transGates: [], planImports: [], importChanges: [], dataQualityIssues: [],
+    transProgrammes: [], transProjects: [], transStreams: [], transActivities: [], transDependencies: [], transMilestones: [], transMappings: [], transGates: [], planImports: [], importChanges: [], dataQualityIssues: [], architectureRisks: [],
   };
   const syntheticMerakiSnapshot = {
     format: C.meraki.FORMAT, version: 1, generatedAt: '2026-11-24T00:00:00Z', organizationId: 'org-synthetic',
@@ -229,6 +229,7 @@
     result = C.transformation.addMapping(result, 'Stream', north.id, 'Decision', 'dec-sdwan-handoff');
     result = C.transformation.addMapping(result, 'Stream', north.id, 'LLD', null, 'Synthetic branch LLD reference');
     result = C.transformation.linkDependency(result, result.transDependencies.find(item => item.streamId === north.id).id, core.id);
+    result = C.risk.upsert(result, { ownerKind: 'Stream', ownerId: north.id, title: 'Synthetic branch LLD input', category: 'LLD input', likelihood: 'Medium', impact: 'High', status: 'Open', intervention: 'Review the synthetic branch LLD before the planned rollout window.', escalationTo: '', neededBy: '2027-01-10', decisionId: 'dec-sdwan-handoff', source: 'Synthetic architecture review', notes: 'Illustrative intervention only.' }).data;
     // Separate synthetic accepted deployment keeps the northern Critical failure example intact.
     result = C.model.copy(result);
     const oldSouth = result.assuranceBaselines.find(item => item.id === 'baseline-syn-south');

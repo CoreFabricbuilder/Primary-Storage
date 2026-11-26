@@ -175,3 +175,25 @@
 .library-object{border-top:1px solid #304b60;padding:10px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .library-object small{width:100%;color:#93adbd}
 @media(max-width:760px){.library-layout{grid-template-columns:1fr}.library-list{max-height:300px}}
+.risk-overview-link,.risk-principle{border-color:#49707a;background:#193647}
+.risk-overview-link{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.risk-overview-link p,.risk-principle p{margin:7px 0 0;font-size:.76rem;line-height:1.5;color:#adc7d3}
+.risk-layout{display:grid;grid-template-columns:minmax(240px,330px) minmax(0,1fr);gap:16px}
+.risk-stream-list{align-self:start;max-height:75vh;overflow:auto}
+.risk-stream-list label{display:grid;gap:7px;margin-bottom:13px;font-size:.74rem;color:#aac4d0}
+.risk-stream,.risk-record{display:grid;gap:5px;width:100%;margin:8px 0;padding:12px;border:1px solid #31566a;border-radius:9px;background:#1b3043;color:#eaf3fa;text-align:left}
+.risk-stream.active,.risk-record.active{border-color:#78cfdb;background:#23495b}
+.risk-stream strong,.risk-record strong{font-size:.79rem}
+.risk-stream small,.risk-record small,.risk-stream span,.risk-record span{color:#a1b9c9;font-size:.69rem;line-height:1.45}
+.risk-detail{min-width:0}
+.risk-context{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0;font-size:.72rem;color:#a9c1d0}
+.risk-context strong{color:#ecf5fa}
+.risk-months{display:flex;gap:8px;overflow:auto;padding:6px 0}
+.risk-months>div{flex:0 0 155px;display:grid;gap:4px;padding:10px;background:#1a3245;border:1px solid #325064;border-radius:8px}
+.risk-months strong{font-size:.72rem}.risk-months span{font-size:.8rem;color:#e5f5fa}.risk-months small{font-size:.65rem;color:#9ab5c5;line-height:1.4}
+.risk-finding{border-top:1px solid #304c60;padding:10px 0}
+.risk-finding strong{font-size:.76rem}
+.risk-finding p{margin:5px 0 0;color:#9db7c6;font-size:.72rem}
+.risk-form{display:grid;gap:12px;margin-top:18px;padding-top:16px;border-top:1px solid #304c60}
+.risk-form label{display:grid;gap:6px;color:#a9c1d0;font-size:.72rem}
+@media(max-width:860px){.risk-layout{grid-template-columns:1fr}.risk-stream-list{max-height:420px}.risk-overview-link{display:block}.risk-overview-link button{margin-top:12px}}

@@ -3,12 +3,14 @@
   'use strict';
   const C = window.Cockpit;
   const SHEETS = ['Planned High Level Streams', 'Detailed Plan'];
+  const OVERLAP_SHEET = 'Details';
   const GATES = Object.freeze(['Planned', 'Architecture Defined', 'LLD Ready', 'Implementation Ready', 'Deployed', 'Validated', 'As-Built']);
   const DOMAINS = Object.freeze([
     ['Teraco Core', 'Teraco Core'], ['Catalyst SD-WAN', 'SD-WAN'], ['Branch LAN', 'Branch'], ['Meraki Wi-Fi', 'Wireless'],
     ['Campus LAN', 'Campus LAN'], ['Campus Core', 'Campus LAN'], ['Security', 'Security'], ['Internet', 'Internet'],
     ['AWS / Cloud', 'AWS'], ['Mainframe', 'Shared Services'], ['Shared Services', 'Shared Services'], ['Routing', 'SD-WAN'],
   ].map(([name, parent]) => ({ id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-$/,''), name, parent })));
+  const overlapDomainHints = Object.freeze({ 'core / hubs': 'teraco-core', 'branch sd-wan': 'catalyst-sd-wan', 'campus lan': 'campus-lan', 'campus core': 'campus-core', 'campus sd-wan': 'catalyst-sd-wan', 'mf sd-wan': 'catalyst-sd-wan', 'security / platform': 'security' });
   const REQUIRED = {
     [SHEETS[0]]: ['Location', 'Workstream', 'TA', 'Category', 'Detail', 'Start', 'End', 'Dependency'],
     [SHEETS[1]]: ['Programme Area', 'Phase', 'Task', 'Source Schedule', 'Resources', 'Source Category', 'Start', 'End', 'Planning Status', 'Source Line', 'Notes'],
@@ -91,8 +93,38 @@
     let workbook;
     try { workbook = xlsx.read(bytes, { type: 'array', cellDates: false, dense: true }); }
     catch { throw new Error('The selected file is not a readable XLSX workbook.'); }
+    if (SHEETS.every(name => workbook.Sheets[name])) return { filename: clean(filename).slice(0, 200), format: 'Two-sheet plan', sheets: Object.fromEntries(SHEETS.map(name => [name, rowsFromSheet(workbook.Sheets[name], name, xlsx)])) };
+    if (workbook.Sheets[OVERLAP_SHEET]) return { filename: clean(filename).slice(0, 200), format: 'Overlapping deployment view', sheets: { [SHEETS[0]]: rowsFromOverlap(workbook.Sheets[OVERLAP_SHEET], xlsx), [SHEETS[1]]: [] } };
     for (const name of SHEETS) check(workbook.Sheets[name], `Workbook is missing sheet: ${name}.`);
-    return { filename: clean(filename).slice(0, 200), sheets: Object.fromEntries(SHEETS.map(name => [name, rowsFromSheet(workbook.Sheets[name], name, xlsx)])) };
+  }
+  function rowsFromOverlap(sheet, xlsx) {
+    const bounds = xlsx.utils.decode_range(sheet['!ref'] || 'A1:A1');
+    check(bounds.e.r - bounds.s.r <= 6000 && bounds.e.c - bounds.s.c <= 100, 'Details exceeds workbook dimensions.');
+    const rows = xlsx.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false, blankrows: true });
+    const headerIndex = rows.findIndex(row => ['Programme Area', 'Workstream', 'Category'].every((field, col) => norm(row[col]) === norm(field)) && row.slice(3).filter(cell => monthOf(cell) && monthOf(cell) !== 'unknown-year').length >= 3);
+    check(headerIndex >= 0, 'Details is missing Programme Area, Workstream, Category and dated month headers.');
+    const headers = rows[headerIndex].map(clean);
+    const monthColumns = headers.map((value, index) => monthOf(value) && monthOf(value) !== 'unknown-year' ? index : -1).filter(index => index >= 3);
+    const scopeColumn = Math.max(...monthColumns) + 1, startColumn = scopeColumn + 1, endColumn = scopeColumn + 2;
+    check(endColumn <= bounds.e.c - bounds.s.c && monthColumns.length <= 48, 'Details is missing the scope or Start/End columns.');
+    const dateAt = (rowIndex, colIndex, display) => {
+      const address = xlsx.utils.encode_cell({ r: bounds.s.r + rowIndex, c: bounds.s.c + colIndex });
+      const cell = sheet[address] || sheet['!data']?.[bounds.s.r + rowIndex]?.[bounds.s.c + colIndex];
+      return cell?.t === 'n' ? parseDate(cell.v) : parseDate(display);
+    };
+    const result = [];
+    for (let index = headerIndex + 1; index < rows.length; index++) {
+      const row = rows[index];
+      if (!clean(row[0]) || !clean(row[1]) || !clean(row[2])) continue;
+      const values = { Location: clean(row[0]), Workstream: clean(row[1]), TA: '', Category: clean(row[2]), Detail: clean(row[scopeColumn]), Start: clean(row[startColumn]), End: clean(row[endColumn]), Dependency: '' };
+      for (const col of monthColumns) values[headers[col]] = clean(row[col]);
+      check(Object.entries(values).every(([header, value]) => header.length <= 150 && value.length <= 4000), `Details row ${bounds.s.r + index + 1} has an oversized field.`);
+      result.push({ sheet: SHEETS[0], originalSheet: OVERLAP_SHEET, row: bounds.s.r + index + 1, values,
+        dateValues: { Start: dateAt(index, startColumn, row[startColumn]), End: dateAt(index, endColumn, row[endColumn]) } });
+      check(result.length <= 5000, 'Details exceeds 5,000 workstreams.');
+    }
+    check(result.length > 0, 'Details has no deployment workstreams.');
+    return result;
   }
   function projectRows(parsed) {
     check(parsed?.sheets && SHEETS.every(name => Array.isArray(parsed.sheets[name])), 'Invalid transformation workbook projection.');
@@ -100,14 +132,17 @@
     const streamCounts = new Map(), activityCounts = new Map();
     const streams = parsed.sheets[SHEETS[0]].map(row => {
       const v = row.values, area = clean(v.Location), workstream = clean(v.Workstream), ta = clean(v.TA), category = clean(v.Category), scope = clean(v.Detail);
-      if (ta) projectMap.set(norm(ta), { id: stableId('trp', norm(ta)), programmeId: 'tr-programme', code: ta, name: ta, removed: false });
+      const areaProject = parsed.format === 'Overlapping deployment view' && area;
+      const projectKey = ta ? norm(ta) : areaProject ? keyOf('area', area) : null;
+      if (projectKey) projectMap.set(projectKey, { id: stableId('trp', projectKey), programmeId: 'tr-programme', code: ta || area, name: ta || area, removed: false });
       const base = keyOf(area, workstream, ta); const n = (streamCounts.get(base) || 0) + 1; streamCounts.set(base, n);
       const sourceKey = `high|${base}|${n}`;
       check(sourceKey.length <= 700, 'High-level stream identity is too long.');
       const monthMarkers = Object.entries(v).filter(([header, value]) => monthOf(header) && clean(value)).map(([label, value]) => ({ label, value, month: monthOf(label) }));
-      return { id: stableId('trs', sourceKey), sourceKey, programmeId: 'tr-programme', projectId: ta ? stableId('trp', norm(ta)) : null, removed: false,
+      return { id: stableId('trs', sourceKey), sourceKey, programmeId: 'tr-programme', projectId: projectKey ? stableId('trp', projectKey) : null, removed: false,
         source: { sheet: row.sheet, row: row.row, values: v, area, workstream, ta, category,
-          sourceDomainId: DOMAINS.find(item => norm(item.name) === norm(category))?.id || null,
+          originalSheet: row.originalSheet || null,
+          sourceDomainId: DOMAINS.find(item => norm(item.name) === norm(category))?.id || (row.originalSheet ? overlapDomainHints[norm(category)] : null) || null,
           scope, plannedStart: row.dateValues?.Start || parseDate(v.Start), plannedEnd: row.dateValues?.End || parseDate(v.End), dependencyText: clean(v.Dependency), monthMarkers } };
     });
     const activities = parsed.sheets[SHEETS[1]].map(row => {
@@ -125,7 +160,7 @@
   }
   function qualityIssues(projected) {
     const issues = [];
-    const add = (item, code, detail) => issues.push({ entityKind: item.source.sheet === SHEETS[0] ? 'Stream' : 'Activity', sourceKey: item.sourceKey, code, detail, sheet: item.source.sheet, row: item.source.row });
+    const add = (item, code, detail) => issues.push({ entityKind: item.source.sheet === SHEETS[0] ? 'Stream' : 'Activity', sourceKey: item.sourceKey, code, detail, sheet: item.source.originalSheet || item.source.sheet, row: item.source.row });
     const all = [...projected.streams, ...projected.activities];
     const areaNames = new Map(), workstreamNames = new Map();
     for (const item of all) {
@@ -145,7 +180,7 @@
         else workstreamNames.set(norm(s.workstream), s.workstream);
       }
       if (s.sheet === SHEETS[0]) {
-        if (!s.ta) add(item, 'MISSING_TA', 'Project / TA mapping is missing.');
+        if (!s.ta && !s.originalSheet) add(item, 'MISSING_TA', 'Project / TA mapping is missing.');
         for (const marker of s.monthMarkers) {
           if (marker.month === 'unknown-year') add(item, 'MARKER_YEAR_UNKNOWN', `${marker.label} marker has no year.`);
           else if (s.plannedStart && s.plannedEnd && (marker.month < s.plannedStart.slice(0, 7) || marker.month > s.plannedEnd.slice(0, 7)))
@@ -178,7 +213,7 @@
       }
       for (const item of existing.filter(item => !item.removed && !now.has(item.sourceKey))) changes.push({ kind: 'Removed', entityKind: kind, item, fields: [] });
     }
-    return { filename: parsed.filename, projected, changes, issues: qualityIssues(projected), summary: {
+    return { filename: parsed.filename, format: parsed.format || 'Two-sheet plan', projected, changes, issues: qualityIssues(projected), summary: {
       new: changes.filter(item => item.kind === 'New').length, changed: changes.filter(item => ['Changed', 'Restored'].includes(item.kind)).length,
       removed: changes.filter(item => item.kind === 'Removed').length, dates: changes.filter(item => item.dateChange).length,
       dependencies: changes.filter(item => item.dependencyChange).length, statuses: changes.filter(item => item.statusChange).length,
@@ -219,7 +254,7 @@
     }
     next.transDependencies.forEach(item => { item.removed = !dependencyKeys.has(item.sourceKey); });
     next.transMilestones.forEach(item => { item.removed = !milestoneKeys.has(item.sourceKey); });
-    next.planImports.push({ id: importId, filename: preview.filename, importedAt: now, ...preview.summary, warningCount: preview.issues.length });
+    next.planImports.push({ id: importId, filename: preview.filename, format: preview.format || 'Two-sheet plan', importedAt: now, ...preview.summary, warningCount: preview.issues.length });
     for (const change of preview.changes) next.importChanges.push({ id: C.model.newId(), importId, kind: change.kind, entityKind: change.entityKind,
       entityId: change.item.id, sourceKey: change.item.sourceKey, fields: change.fields, dateChange: !!change.dateChange,
       dependencyChange: !!change.dependencyChange, statusChange: !!change.statusChange });
@@ -275,6 +310,7 @@
       check(programmes.has(item.programmeId) && short(item.sourceKey, 700) && item.source && typeof item.source === 'object' && !Array.isArray(item.source) && item.source.values && typeof item.source.values === 'object' && !Array.isArray(item.source.values) && typeof item.removed === 'boolean', `Invalid ${kind} source.`);
       const source = item.source;
       check(source.sheet === (kind === 'Stream' ? SHEETS[0] : SHEETS[1]) && Number.isInteger(source.row) && source.row >= 1 && source.row <= 100000, `Invalid ${kind} traceability.`);
+      check(source.originalSheet === undefined || source.originalSheet === null || source.originalSheet === OVERLAP_SHEET, 'Invalid source sheet provenance.');
       check(Object.keys(source.values).length <= 100 && Object.entries(source.values).every(([field, value]) => short(field, 150) && short(value, 4000)), `Invalid ${kind} source values.`);
       check(short(source.area, 4000) && date(source.plannedStart) && date(source.plannedEnd), `Invalid ${kind} dates or area.`);
       if (kind === 'Stream') check(item.projectId === null || projects.has(item.projectId), 'Stream project is missing.');
@@ -296,7 +332,7 @@
       else if (targetCollections[item.targetKind]) check(data[targetCollections[item.targetKind]].some(target => target.id === item.targetId), 'Invalid mapped target.');
       else check(['HLD', 'LLD', 'Validation Requirement'].includes(item.targetKind) && item.reference, 'Invalid mapped reference.');
     }
-    for (const item of data.planImports) check(short(item.filename, 200) && short(item.importedAt, 40) && ['new', 'changed', 'removed', 'dates', 'dependencies', 'statuses', 'warningCount'].every(field => Number.isInteger(item[field]) && item[field] >= 0), 'Invalid plan import.');
+    for (const item of data.planImports) check(short(item.filename, 200) && short(item.importedAt, 40) && (item.format === undefined || ['Two-sheet plan', 'Overlapping deployment view'].includes(item.format)) && ['new', 'changed', 'removed', 'dates', 'dependencies', 'statuses', 'warningCount'].every(field => Number.isInteger(item[field]) && item[field] >= 0), 'Invalid plan import.');
     for (const item of data.importChanges) check(imports.has(item.importId) && ['New', 'Changed', 'Restored', 'Removed'].includes(item.kind) && ['Stream', 'Activity'].includes(item.entityKind) && short(item.sourceKey, 700) && Array.isArray(item.fields) && item.fields.every(field => short(field, 100)), 'Invalid import change.');
     for (const item of data.dataQualityIssues) check(imports.has(item.importId) && short(item.code, 100) && short(item.detail, 500) && short(item.sourceKey, 700), 'Invalid data quality issue.');
     return data;

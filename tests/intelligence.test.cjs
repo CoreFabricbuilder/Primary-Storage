@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'risk.js', 'demo.js', 'storage.js', 'transformation-views.js', 'risk-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return context.window.Cockpit;
 }
 function accepted(C, withSdwan = false) {
@@ -127,7 +127,7 @@ test('schema 6 migration preserves vendor validation without creating a baseline
   const C = load(); const old = C.model.copy(C.demo.create()); old.schemaVersion = 6;
   for (const name of ['serviceFlows', 'segmentationLinks', 'deploymentBaselines', 'driftReviews']) delete old[name];
   const migrated = C.model.migrateWorkspace(old);
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, 10);
   assert.equal(migrated.sdwanBatches.length, old.sdwanBatches.length);
   assert.equal(migrated.merakiCandidates.length, old.merakiCandidates.length);
   assert.equal(migrated.transActivities.length, old.transActivities.length);

@@ -13,7 +13,7 @@ function load() {
   }
   const context = vm.createContext({ window: {}, Blob, Uint8Array, URL, atob, FileReader, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'transformation.js', 'risk.js', 'demo.js', 'storage.js', 'transformation-views.js', 'risk-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return context.window.Cockpit;
 }
 function localFile(name, text) {
@@ -53,7 +53,7 @@ test('schema 8 migration preserves architecture and rejects embedded URL credent
   const C = load();
   const old = C.model.copy(C.demo.create()); old.schemaVersion = 8; delete old.libraryDocuments; delete old.documentLinks;
   const migrated = C.model.migrateWorkspace(old);
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, 10);
   assert.equal(migrated.branches.length, old.branches.length);
   assert.deepEqual([...migrated.libraryDocuments], []);
   assert.throws(() => C.library.addExternal(migrated, { title: 'Bad', remoteUrl: 'javascript:alert(1)' }), /HTTPS/);
