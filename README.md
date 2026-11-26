@@ -35,7 +35,7 @@ Catalyst SD-WAN validation can stage a user-selected Manager snapshot for a Bran
 
 **As-Built & Drift** lets an architect snapshot an accepted deployment as an As-Built Baseline. Later sourced observations compare with the frozen values. Unexplained differences can be reviewed as Expected or Approved Change with a linked architecture decision and rationale. The application never changes the baseline or remediates devices automatically.
 
-The [Transformation Portfolio](docs/TRANSFORMATION_IMPORT.md) locally reads the two-sheet `OM Plan - streams.xlsx` format. It previews new, changed and removed source rows and data quality issues before you confirm. Architect mappings and gates stay separate from workbook planning status and survive re-import. The original workbook is not saved; JSON backup includes the imported projection and enrichment. Keep customer workbooks and backups outside Git. The XLSX parser is bundled locally, so no CDN or build is needed.
+The [Transformation Portfolio](docs/TRANSFORMATION_IMPORT.md) locally reads either the two-sheet plan or the one-sheet `Details` overlapping deployment workbook. It previews new, changed and removed source rows before you confirm. **Architecture Risks** highlights near-term workstreams that need gate review, domain mapping, LLD references or dependency clarification, and shows monthly concurrency. These are review prompts; likelihood, impact and escalation are set only in architect assessments linked to plan rows. The original workbook is not saved; JSON backup includes its imported projection and enrichment. Keep customer workbooks and backups outside Git. The XLSX parser is bundled locally, so no CDN or build is needed.
 
 ## Development verification
 

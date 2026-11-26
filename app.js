@@ -13,6 +13,7 @@
     scenarioBranchId: null, scenarioPatternId: 'assigned', scenarioState: 'Transition', scenarioFilter: 'All',
     driftBranchId: null, driftBaselineId: null,
     transPreview: null, transTimelineBy: 'Project / TA', transProjectId: null, transStreamId: null, transKind: 'Stream', transItemId: null, transHighlightIds: [],
+    riskStreamId: null, riskId: null, riskWindow: 'All',
     currentReportPreview: null,
     selectedLibraryDocumentId: null, librarySearch: '',
     decisionSearch: '', camera: null, topologyController: null,
@@ -156,6 +157,7 @@
     ui.scenarioBranchId = null; ui.scenarioPatternId = 'assigned'; ui.scenarioState = 'Transition'; ui.scenarioFilter = 'All';
     ui.driftBranchId = null; ui.driftBaselineId = null;
     ui.transPreview = null; ui.currentReportPreview = null; ui.transProjectId = null; ui.transStreamId = null; ui.transItemId = null; ui.transHighlightIds = [];
+    ui.riskStreamId = null; ui.riskId = null; ui.riskWindow = 'All';
     ui.selectedLibraryDocumentId = null; ui.librarySearch = '';
     render(); status('Restored in this browser'); toast('JSON backup restored.');
   }
@@ -310,6 +312,14 @@
         ui.transKind = button.dataset.kind; ui.transItemId = id;
         if (ui.transKind === 'Stream') ui.transStreamId = id;
         navigate('transDetail'); break;
+      case 'select-risk-stream': ui.riskStreamId = id; ui.riskId = null; render(); break;
+      case 'open-risk-stream': ui.riskStreamId = id; ui.riskId = null; navigate('transRisks'); break;
+      case 'select-risk-record': {
+        const item = ui.data.architectureRisks.find(value => value.id === id);
+        if (!item) throw new Error('Architecture risk not found.');
+        ui.riskStreamId = item.ownerId; ui.riskId = id; render(); break;
+      }
+      case 'new-risk': ui.riskId = null; render(); break;
       case 'show-trans-topology': {
         ui.transHighlightIds = ui.data.transMappings.filter(item => item.ownerKind === 'Stream' && item.ownerId === id && item.targetKind === 'Component').map(item => item.targetId);
         if (!ui.transHighlightIds.length) throw new Error('Map a topology component to this stream first.');
@@ -491,6 +501,7 @@
       });
     }
     if (target.id === 'trans-timeline-by') { ui.transTimelineBy = target.value; render(); }
+    if (target.id === 'risk-window') { ui.riskWindow = target.value; render(); }
     if (target.id === 'trans-project') { ui.transProjectId = target.value; render(); }
     if (target.id === 'trans-activity-stream') { run(() => persist(C.transformation.linkActivity(ui.data, target.dataset.id, target.value), 'Activity linked to stream.')); }
     if (target.matches('[data-dependency-id]')) { run(() => persist(C.transformation.linkDependency(ui.data, target.dataset.dependencyId, target.value), 'Stream dependency linked.')); }
@@ -507,6 +518,10 @@
     }
   });
   document.addEventListener('submit', event => {
+    if (event.target.matches('#risk-form')) {
+      event.preventDefault(); const values = Object.fromEntries(new FormData(event.target));
+      run(async () => { const result = C.risk.upsert(ui.data, values); ui.riskId = result.id; ui.riskStreamId = String(values.ownerId); await persist(result.data, 'Architecture intervention assessment saved.'); });
+    }
     if (event.target.matches('#library-upload-form')) {
       event.preventDefault(); const files = [...event.target.elements.files.files], sourceLabel = String(new FormData(event.target).get('sourceLabel') || '');
       run(async () => {

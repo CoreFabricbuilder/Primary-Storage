@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, atob, console });
   context.window.window = context.window;
-  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'risk.js', 'demo.js', 'storage.js', 'transformation-views.js', 'risk-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   return context.window.Cockpit;
 }
 function snapshot(C) {
@@ -81,7 +81,7 @@ test('campus scope, schema 5 migration and JSON backup retain validation history
   const legacy = C.model.copy(C.demo.create()); legacy.schemaVersion = 5;
   for (const name of ['sdwanBatches', 'sdwanCandidates', 'sdwanObservations', 'sdwanTargets', 'sdwanRuns', 'sdwanResults']) delete legacy[name];
   const migrated = C.model.migrateWorkspace(legacy);
-  assert.equal(migrated.schemaVersion, 9); assert.equal(migrated.merakiCandidates.length, legacy.merakiCandidates.length);
+  assert.equal(migrated.schemaVersion, 10); assert.equal(migrated.merakiCandidates.length, legacy.merakiCandidates.length);
 });
 test('collector uses fixed read-only data routes and no browser connection', () => {
   const shell = fs.readFileSync(path.join(root, 'sdwan-companion.sh'), 'utf8');

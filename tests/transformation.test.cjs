@@ -8,7 +8,7 @@ const root = path.resolve(__dirname, '..');
 
 function load() {
   const context = vm.createContext({ window: {}, Blob, Uint8Array, ArrayBuffer, atob, console });
-  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'demo.js', 'storage.js', 'transformation-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) {
+  for (const file of ['model.js', 'library.js', 'assurance.js', 'meraki.js', 'sdwan.js', 'intelligence.js', 'current-report.js', 'scenario.js', 'vendor/xlsx.full.min.js', 'transformation.js', 'risk.js', 'demo.js', 'storage.js', 'transformation-views.js', 'risk-views.js', 'sdwan-views.js', 'intelligence-views.js', 'current-report-views.js', 'scenario-views.js', 'library-views.js', 'views.js']) {
     vm.runInContext(fs.readFileSync(path.join(root, file), 'utf8'), context, { filename: file });
   }
   return { C: context.window.Cockpit, XLSX: context.window.XLSX };
@@ -171,7 +171,7 @@ test('planning status and architecture gate remain independent; backup preserves
   const legacy = C.model.copy(next); legacy.schemaVersion = 4;
   for (const name of ['transProgrammes', 'transProjects', 'transStreams', 'transActivities', 'transDependencies', 'transMilestones', 'transMappings', 'transGates', 'planImports', 'importChanges', 'dataQualityIssues']) delete legacy[name];
   const migrated = C.model.migrateWorkspace(legacy);
-  assert.equal(migrated.schemaVersion, 9);
+  assert.equal(migrated.schemaVersion, 10);
   assert.equal(migrated.transStreams.length, 0);
   assert.equal(migrated.merakiCandidates.length, next.merakiCandidates.length);
 });
@@ -186,4 +186,64 @@ test('all portfolio views render synthetic data and escape workbook text', () =>
   const html = C.views.transDetail(data, ui);
   assert.ok(html.includes('&lt;img'));
   assert.ok(!html.includes('<img src=x'));
+});
+
+test('one-sheet overlapping view imports dated workstreams without inventing detailed activities or TA codes', () => {
+  const { C, XLSX } = load();
+  const serial = value => (Date.parse(`${value}T00:00:00Z`) - Date.UTC(1899, 11, 30)) / 86400000;
+  const wb = XLSX.utils.book_new();
+  const header = ['Programme Area', 'Workstream', 'Category', 'Nov-26', 'Dec-26', 'Jan-27', 'Feb-27', 'Mar-27', 'Apr-27', 'May-27', 'Jun-27', 'Jul-27', 'Aug-27', 'Sep-27', '', '', ''];
+  const rows = [['Synthetic overlapping view'], [], [], ['Legend', 'Core / Hubs', 'Branch SD-WAN'], [], header,
+    ['Example Core', 'Core handoff', 'Core / Hubs', '●', '●', '', '', '', '', '', '', '', '', '', 'Synthetic core scope', serial('2026-11-01'), serial('2026-11-30')],
+    ['Example Estate', 'Branch rollout', 'Branch SD-WAN', '', '', '', '', '●', '●', '', '', '', '', '', 'Synthetic branch scope', serial('2027-03-01'), serial('2027-04-30')],
+    [], ['Concurrent workstreams', '', '', '1', '0']];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Details');
+  const parsed = C.transformation.parseWorkbook(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }), 'Synthetic overlapping plan.xlsx');
+  const projected = C.transformation.projectRows(parsed);
+  assert.equal(parsed.format, 'Overlapping deployment view');
+  assert.equal(projected.streams.length, 2);
+  assert.equal(projected.activities.length, 0);
+  assert.equal(projected.projects.length, 2);
+  assert.equal(projected.streams[0].source.originalSheet, 'Details');
+  assert.equal(projected.streams[0].source.row, 7);
+  assert.equal(projected.streams[0].source.plannedStart, '2026-11-01');
+  assert.equal(projected.streams[0].source.plannedEnd, '2026-11-30');
+  assert.equal(projected.streams[0].source.ta, '');
+  assert.equal(projected.streams[0].source.sourceDomainId, 'teraco-core');
+  const base = C.demo.create();
+  const preview = C.transformation.previewImport(base, parsed);
+  assert.ok(preview.issues.some(item => item.code === 'MARKER_DATE_CONFLICT' && item.sheet === 'Details' && item.row === 7));
+  const applied = C.transformation.applyImport(base, preview);
+  assert.equal(applied.planImports.at(-1).format, 'Overlapping deployment view');
+  assert.equal(applied.transActivities.filter(item => !item.removed).length, 0);
+  const repeat = C.transformation.previewImport(applied, parsed);
+  assert.equal(repeat.changes.filter(item => item.kind === 'New' || item.kind === 'Changed').length, 0);
+  const core = applied.transStreams.find(item => !item.removed && item.source.workstream === 'Core handoff');
+  const prompts = C.risk.signals(applied, '2026-11-25').find(item => item.stream.id === core.id);
+  assert.ok(prompts.findings.some(item => item.code === 'GATE'));
+  assert.ok(prompts.findings.some(item => item.code === 'DOMAIN'));
+  assert.ok(prompts.findings.some(item => item.code === 'DETAIL'));
+  const month = C.risk.monthLoad(applied).find(item => item.month === '2026-11');
+  assert.equal(month.count, 1);
+  assert.equal(month.plannedGate, 1);
+  assert.match(C.views.transRisks(applied, { riskWindow: 'All' }), /assessments on removed workstreams/);
+});
+
+test('architect risk and escalation remain separate from source plan and survive import or schema migration', () => {
+  const { C } = load();
+  const data = C.demo.create(), stream = data.transStreams.find(item => !item.removed);
+  const before = JSON.stringify(stream.source);
+  assert.throws(() => C.risk.upsert(data, { ownerKind: 'Stream', ownerId: stream.id, title: 'Synthetic gap', category: 'Decision', likelihood: 'High', impact: 'Critical', status: 'Escalated', intervention: 'Review architecture decision', source: 'Synthetic architect' }), /escalation details/);
+  const result = C.risk.upsert(data, { ownerKind: 'Stream', ownerId: stream.id, title: 'Synthetic gap', category: 'Decision', likelihood: 'High', impact: 'Critical', status: 'Escalated', intervention: 'Review architecture decision', escalationTo: 'Synthetic architecture board', neededBy: '2027-01-15', decisionId: data.decisions[0].id, source: 'Synthetic architect review', notes: 'Illustrative only' });
+  assert.equal(result.data.architectureRisks.length, data.architectureRisks.length + 1);
+  assert.equal(JSON.stringify(result.data.transStreams.find(item => item.id === stream.id).source), before);
+  assert.equal(C.risk.signals(result.data, '2026-11-25').find(item => item.stream.id === stream.id).riskCount, data.architectureRisks.filter(item => item.ownerId === stream.id && item.status !== 'Resolved').length + 1);
+  const backup = C.storage.parseBackup(JSON.stringify({ format: 'network-refresh-cockpit-backup', version: 2, workspace: result.data, photos: [], documents: [] }));
+  assert.equal(backup.workspace.architectureRisks.find(item => item.id === result.id).status, 'Escalated');
+  const old = C.model.copy(data); old.schemaVersion = 9; delete old.architectureRisks;
+  const migrated = C.model.migrateWorkspace(old);
+  assert.equal(migrated.schemaVersion, 10);
+  assert.equal(migrated.transStreams.length, data.transStreams.length);
+  assert.equal(migrated.libraryDocuments.length, data.libraryDocuments.length);
+  assert.equal(migrated.architectureRisks.length, 0);
 });
